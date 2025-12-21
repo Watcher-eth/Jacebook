@@ -6,7 +6,7 @@ import { FacebookNavbar } from "@/components/layout/navbar";
 import { BioSection } from "@/components/profile/bio";
 import { CreatePost } from "@/components/profile/createPost";
 import { FriendsSection } from "@/components/profile/friends";
-import { ProfileHeader } from "@/components/profile/header";
+import { ProfileHeader, ProfileTab } from "@/components/profile/header";
 import { TimelineSection } from "@/components/profile/timeline";
 
 import { getCelebrityBySlug, getAllCelebrities, slugifyName } from "@/lib/people";
@@ -23,6 +23,11 @@ import {
 
 import { NewsFeedPost } from "@/components/feed/post";
 import { buildFriendsForPerson, type FriendEdge } from "@/lib/friends-graph";
+import { fetchWikidataProfileByName, type WikidataProfile } from "@/lib/wikidata"
+import { AboutSection } from "@/components/profile/aboutSection"
+import { PhotoGrid } from "@/components/profile/photoGrid"
+import { FriendGrid } from "@/components/profile/friendGrid"
+import React from "react"
 
 type WithPerson = { name: string; slug: string };
 
@@ -31,6 +36,7 @@ type PageProps = {
   name: string;
   count: number;
   years: string[];
+  wikidata?: WikidataProfile;
   profileAvatarUrl: string;
   coverUrl: string;
   friends: FriendEdge[];
@@ -43,10 +49,7 @@ type PageProps = {
     imageUrl?: string;
     withPeople?: WithPerson[];
   }>;
-  debug?: {
-    workerUrl: string;
-    sample: Array<{ key: string; imageUrl?: string; profileAvatarUrl: string; coverUrl: string }>;
-  };
+
 };
 
 type Appearance = {
@@ -240,6 +243,7 @@ function coPeopleForPost(args: {
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
   const slug = String(ctx.params?.slug || "");
   const celeb = getCelebrityBySlug(slug);
+  
   if (!celeb) return { notFound: true };
 
   const DEBUG = process.env.NODE_ENV === "development";
@@ -261,7 +265,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         coverUrl: "",
         friends: [],
         posts: [],
-        debug: DEBUG ? { workerUrl, sample: [] } : undefined,
+        wikidata: null,
       },
     };
   }
@@ -368,6 +372,8 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     })
     .reverse();
 
+    const wd = await fetchWikidataProfileByName(celeb.name);
+
   return {
     props: {
       slug,
@@ -378,52 +384,86 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       coverUrl,
       friends,
       posts: rawPosts,
+      wikidata: wd,
     },
   };
 };
 
 export default function PersonPage(props: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { name, years, posts, count, profileAvatarUrl, coverUrl, friends } = props;
+    const { name, years, posts, count, profileAvatarUrl, coverUrl, friends } = props;
+  
+    const [tab, setTab] = React.useState<ProfileTab>("timeline");
+  
+    const photos = React.useMemo(() => {
+        return posts
+          .filter((p) => !!p.imageUrl)
+          .map((p) => ({
+            key: p.key,
+            imageUrl: p.imageUrl!,
+            href: p.url, // open PDF when clicked
+            label: p.content,
+          }));
+      }, [posts]);
+    return (
+      <div className="min-h-screen bg-background font-sans">
+        <Head>
+          <title>{`${name} • Jacebook`}</title>
+          <meta name="description" content={`Documents where ${name} appears (${count} total appearances)`} />
+        </Head>
+  
+        <FacebookNavbar />
+        <ProfileHeader
+          name={name}
+          verified={true}
+          coverUrl={coverUrl}
+          avatarUrl={profileAvatarUrl}
+          activeTab={tab}
+          onTabChange={setTab}
+        />
+  
+        <div className="max-w-[1050px] mx-auto px-4 py-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
+            <aside className="space-y-4">
+              <BioSection wikidata={props.wikidata!} />
+              <FriendsSection friends={friends} />
+            </aside>
+  
+            <main className="space-y-4 min-w-[30vw]">
+            {tab === "timeline" && (
+              <>
+                <CreatePost />
+                {posts.map((p) => (
+                  <div key={p.key}>
+                    <NewsFeedPost
+                      author={name}
+                      authorAvatar={p.authorAvatar}
+                      timestamp={p.timestamp}
+                      content={p.content}
+                      imageUrl={p.imageUrl}
+                      withPeople={p.withPeople}
+                    />
+                  </div>
+                ))}
+              </>
+            )}
 
-  return (
-    <div className="min-h-screen bg-background font-sans">
-      <Head>
-        <title>{`${name} • Jacebook`}</title>
-        <meta name="description" content={`Documents where ${name} appears (${count} total appearances)`} />
-      </Head>
-
-      <FacebookNavbar />
-      <ProfileHeader name={name} verified={true} coverUrl={coverUrl} avatarUrl={profileAvatarUrl} />
-
-      <div className="max-w-[1050px] mx-auto px-4 py-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
-          <aside className="space-y-4">
-            <BioSection />
-            <FriendsSection friends={friends} />
-          </aside>
-
-          <main className="space-y-4">
-            <CreatePost />
-
-            {posts.map((p) => (
-              <div key={p.key}>
-                <NewsFeedPost
-                  author={name}
-                  authorAvatar={p.authorAvatar}
-                  timestamp={p.timestamp}
-                  content={p.content}
-                  imageUrl={p.imageUrl}
-                  withPeople={p.withPeople}
-                />
+            {tab === "about" && (
+              <div className="space-y-4">
+                {/* reuse your existing BioSection styling, but in the main column */}
+                <AboutSection wikidata={props.wikidata!} />
               </div>
-            ))}
-          </main>
+            )}
 
-          <aside className="hidden lg:block">
-            <TimelineSection years={years} />
-          </aside>
+            {tab === "friends" && <FriendGrid friends={friends} />}
+
+            {tab === "photos" && <PhotoGrid photos={photos} />}
+          </main>
+  
+            <aside className="hidden lg:block">
+              <TimelineSection years={years} />
+            </aside>
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

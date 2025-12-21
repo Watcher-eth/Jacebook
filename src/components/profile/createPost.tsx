@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 
 export function CreatePost() {
   return (
-    <div className="p-3 px-0 gap-0 bg-white rounded-md border border-gray-200">
+    <div className="p-3 px-0 gap-0 bg-white rounded-md border shadow-xs">
       <div className="flex items-center gap-3 mb-2 border-b border-border mx-2 pb-1">
         <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-muted gap-2">
           <div className="h-5 w-5 bg-[#5890ff] rounded flex items-center justify-center">

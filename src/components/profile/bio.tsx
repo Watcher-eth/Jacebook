@@ -1,20 +1,19 @@
-import { Music, Users, Briefcase } from "lucide-react"
+import { Music, Users, Briefcase, Heart, Calendar } from "lucide-react"
 import { Card } from "@/components/ui/card"
+import { WikidataProfile } from "@/lib/wikidata"
 
-export function BioSection() {
+export function BioSection({ wikidata }: { wikidata: WikidataProfile | null }) {
+  console.log(wikidata)
   return (
     <div className="space-y-3">
       {/* Recent Activity */}
       <Card className="p-4">
         <div className="space-y-4 text-sm">
           <div className="flex gap-3">
-            <Music className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+            <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
             <div>
-              <span className="text-foreground">Listened to </span>
-              <span className="font-semibold text-primary">You & I</span>
-              <span className="text-foreground"> by </span>
-              <span className="font-semibold text-primary">Local Natives</span>
-              <div className="text-muted-foreground text-xs mt-0.5">on Monday on Spotify</div>
+              <span className="text-foreground">Born: </span>
+              <span className="font-semibold text-primary">{wikidata?.dob}</span>
             </div>
           </div>
 
@@ -27,26 +26,14 @@ export function BioSection() {
             </div>
           </div>
 
-          <div className="flex gap-3">
-            <Users className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-            <div>
-              <span className="text-foreground">9 mutual friends including </span>
-              <span className="font-semibold text-primary">Tanner Curtis</span>
-              <span className="text-foreground"> and </span>
-              <span className="font-semibold text-primary">Denver Nicks</span>
-            </div>
+          <div className="flex gap-3 items-center">
+            <Heart className="h-4 w-4  -mt-0.5  text-muted-foreground " />
+            <span className="text-foreground">{wikidata?.relationship !== "Unknown" ? wikidata?.relationship : "Single"}</span>
           </div>
 
-          <div className="flex gap-3">
-            <Briefcase className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-            <div>
-              <span className="text-foreground">Deputy Tech Editor at </span>
-              <span className="font-semibold text-primary">TIME</span>
-              <div className="text-muted-foreground mt-0.5">
-                Past: <span className="font-semibold text-primary">Mashable</span> and{" "}
-                <span className="font-semibold text-primary">City of Rochester, Communications Bureau</span>
-              </div>
-            </div>
+          <div className="flex gap-3 items-center">
+            <Briefcase className="h-4 w-4  -mt-0.5  text-muted-foreground " />
+            <span className="text-foreground">{wikidata?.occupation?.charAt(0).toUpperCase() + (wikidata?.occupation?.slice(1) || "")}</span>
           </div>
         </div>
       </Card>

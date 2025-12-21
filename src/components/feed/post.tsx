@@ -74,9 +74,7 @@ export function NewsFeedPost({ imageUrl, withPeople, ...props }: NewsFeedPostPro
           </Button>
         </div>
 
-        <div className="my-3">
-          <p className="text-sm text-foreground">{props.content}</p>
-        </div>
+  
 
         <div className="mb-0">
           <img

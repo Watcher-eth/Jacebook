@@ -3,16 +3,24 @@ import { Check, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+export type ProfileTab = "timeline" | "about" | "friends" | "photos";
+
 export function ProfileHeader(props: {
   name: string;
   coverUrl?: string;
   avatarUrl?: string;
   verified?: boolean;
+
+  activeTab?: ProfileTab;
+  onTabChange?: (tab: ProfileTab) => void;
 }) {
   const { name } = props;
   const coverUrl = props.coverUrl ?? "/medical-illustration-showing-human-spine-and-skele.jpg";
   const avatarUrl = props.avatarUrl ?? "/professional-black-and-white-portrait-man-in-suit.jpg";
   const verified = props.verified ?? true;
+
+  const activeTab = props.activeTab ?? "timeline";
+  const onTabChange = props.onTabChange ?? (() => {});
 
   const initials = name
     .split(" ")
@@ -20,6 +28,24 @@ export function ProfileHeader(props: {
     .slice(0, 2)
     .map((s) => s[0]?.toUpperCase())
     .join("");
+
+  const tabBtn = (tab: ProfileTab, label: React.ReactNode) => {
+    const active = activeTab === tab;
+    return (
+      <Button
+        key={tab}
+        type="button"
+        variant="ghost"
+        onClick={() => onTabChange(tab)}
+        className={[
+          "rounded-none hover:bg-muted",
+          active ? "border-b-4 border-primary text-primary hover:bg-transparent -mb-px" : "",
+        ].join(" ")}
+      >
+        {label}
+      </Button>
+    );
+  };
 
   return (
     <div className="bg-card">
@@ -63,31 +89,18 @@ export function ProfileHeader(props: {
 
       <div className="max-w-[1050px] mx-auto px-4 -mt-30">
         <div className="flex items-end gap-4">
-          <Avatar className="h-[160px] w-[160px] border-4 -top-2 border-card rounded-none flex-shrink-0">
-            <AvatarImage src={avatarUrl} className="rounded-none object-cover"/>
-            <AvatarFallback className="text-5xl rounded-none">{initials || "?"}</AvatarFallback>
+          <div className="border border-gray-100 rounded-md relative -top-3">
+          <Avatar className="h-[160px] w-[160px] border-5  border-card rounded-md flex-shrink-0">
+            <AvatarImage src={avatarUrl} className="rounded-md object-cover" />
+            <AvatarFallback className="text-5xl rounded-md">{initials || "?"}</AvatarFallback>
           </Avatar>
-
+          </div>
           <div className="flex items-center gap-1 border-b border-border flex-1 pb-0">
-            <Button
-              variant="ghost"
-              className="rounded-none border-b-4 border-primary text-primary hover:bg-transparent -mb-px"
-            >
-              Timeline
-            </Button>
-            <Button variant="ghost" className="rounded-none hover:bg-muted">
-              About
-            </Button>
-            <Button variant="ghost" className="rounded-none hover:bg-muted">
-              Friends
-              <span className="ml-1 text-muted-foreground">9 Mutual</span>
-            </Button>
-            <Button variant="ghost" className="rounded-none hover:bg-muted">
-              Photos
-            </Button>
-            <Button variant="ghost" className="rounded-none hover:bg-muted">
-              More
-            </Button>
+            {tabBtn("timeline", "Timeline")}
+            {tabBtn("about", "About")}
+            {tabBtn("friends", <>Friends <span className="ml-1 text-muted-foreground">9 Mutual</span></>)}
+            {tabBtn("photos", "Photos")}
+            {tabBtn("timeline", "More")}
           </div>
         </div>
       </div>
