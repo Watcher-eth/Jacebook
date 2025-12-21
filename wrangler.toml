@@ -1,0 +1,8 @@
+name = "jacebook-worker"
+main = "worker/index.ts"
+compatibility_date = "2024-12-01"
+
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "jacebook-r2"
+preview_bucket_name = "jacebook-r2"

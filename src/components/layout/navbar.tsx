@@ -10,7 +10,7 @@ export function FacebookNavbar() {
         <div className="flex items-center justify-between h-11">
           <div className="flex items-center flex-1"></div>
           <div className="flex items-center flex-1">
-            <svg className="w-8 h-8" viewBox="0 0 36 36" fill="currentColor">
+            <svg className="w-7 h-7 bg-white rounded-md" viewBox="0 0 36 36" fill="currentColor">
               <path d="M20.181 35.87C29.094 34.791 36 27.202 36 18c0-9.941-8.059-18-18-18S0 8.059 0 18c0 8.442 5.811 15.526 13.652 17.471L14 34h5.5l.681 1.87Z" />
               <path
                 fill="#3b5998"
@@ -18,11 +18,11 @@ export function FacebookNavbar() {
               />
             </svg>
 
-            <div className="relative w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <div className="relative w-96 ml-3">
+              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
-                placeholder="Alex Fitzpatrick"
-                className="pl-9 h-8 bg-white rounded-md border-none text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-muted-foreground/50 text-sm"
+                placeholder="Search for people, places and things"
+                className="pl-2 h-7 bg-white rounded-md border-none text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-muted-foreground/50 text-sm"
               />
             </div>
           </div>
