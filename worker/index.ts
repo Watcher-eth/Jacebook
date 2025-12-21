@@ -48,6 +48,8 @@ interface Env {
   </body>
   </html>`;
   }
+
+  
   
   export default {
     async fetch(request: Request, env: Env): Promise<Response> {
@@ -56,6 +58,7 @@ interface Env {
   
       const cacheHeaders = {
         "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
         "Cache-Control": "public, max-age=31536000, immutable",
       };
   
@@ -66,6 +69,16 @@ interface Env {
             ...cacheHeaders,
             "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type",
+          },
+        });
+      }
+
+      if (path === "health") {
+        return new Response("ok", {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-store",
+            "Access-Control-Allow-Origin": "*",
           },
         });
       }
@@ -266,21 +279,42 @@ interface Env {
         );
       }
   
+      const okHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Cache-Control": "public, max-age=31536000, immutable",
+      };
+      
+      const missHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Cache-Control": "no-store, max-age=0",
+      };
+      
       // Serve file from R2
       const object = await env.R2_BUCKET.get(path);
   
-      if (!object) {
-        return new Response("Not Found", { 
-          status: 404,
-          headers: cacheHeaders,
-        });
+    
+if (!object) {
+    return new Response("Not Found", { status: 404, headers: missHeaders });
+  }
+
+      function contentTypeForKey(key: string, fallback?: string) {
+        const k = key.toLowerCase();
+        if (k.endsWith(".jpg") || k.endsWith(".jpeg")) return "image/jpeg";
+        if (k.endsWith(".png")) return "image/png";
+        if (k.endsWith(".webp")) return "image/webp";
+        if (k.endsWith(".gif")) return "image/gif";
+        if (k.endsWith(".pdf")) return "application/pdf";
+        return fallback || "application/octet-stream";
       }
-  
-      const headers = new Headers(cacheHeaders);
-      headers.set("Content-Type", object.httpMetadata?.contentType || "application/pdf");
+      
+      const headers = new Headers(okHeaders);
+      headers.set("Content-Type", object.httpMetadata?.contentType || contentTypeForKey(path));
       headers.set("Content-Length", object.size.toString());
       headers.set("Content-Disposition", `inline; filename="${path.split("/").pop()}"`);
-  
+      
+      
       return new Response(object.body, { headers });
     },
   };

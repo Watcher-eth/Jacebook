@@ -1,77 +1,45 @@
 import { FacebookNavbar } from "@/components/layout/navbar"
-import { BioSection } from "@/components/profile/bio"
+import { NewsFeedSidebar } from "@/components/feed/sidebarLeft"
+import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight"
 import { CreatePost } from "@/components/profile/createPost"
-import { FriendsSection } from "@/components/profile/friends"
-import { ProfileHeader } from "@/components/profile/header"
-import { PostCard } from "@/components/profile/post"
-import { TimelineSection } from "@/components/profile/timeline"
+import { NewsFeedPost } from "@/components/feed/post"
 
-
-export default function Home() {
+export default function NewsFeedPage() {
   return (
-    <div className="min-h-screen bg-background font-sans">
+    <div className="min-h-screen bg-background">
       <FacebookNavbar />
-      <ProfileHeader />
 
-      <div className="max-w-[1050px] mx-auto px-4 py-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
-          {/* Left Sidebar - Bio Section */}
-          <aside className="space-y-4">
-            <BioSection />
-            <FriendsSection />
-          </aside>
+      <div className="max-w-[1050px] mx-auto flex gap-3">
+        {/* Left Sidebar */}
+        <NewsFeedSidebar />
 
-          {/* Main Content - Timeline */}
-          <main className="space-y-4">
-            <CreatePost />
-            <PostCard
-              author="Alex Fitzpatrick"
-              timestamp="20 hrs"
-              content="All this talk of measles has...
+        {/* Main Feed */}
+        <main className="flex-1 py-4 space-y-3">
+          {/* Create Post */}
+          <CreatePost />
 
-Gone viral"
-              likes={29}
-              likedBy={["Craig Kanalley", "Rubina Madan Fillion"]}
-              comments={[
-                {
-                  author: "Robert Potter",
-                  text: "Alex Fitzpatrick when you have your first kid I want to be there when you look into its eyes and say 'aw, you are such a little dick'",
-                  likes: 1,
-                  timestamp: "16 hrs",
-                },
-                {
-                  author: "Alex Fitzpatrick",
-                  text: "Robert I'm not planning on getting pregnant until at least after the wedding",
-                  likes: 2,
-                  timestamp: "16 hrs",
-                },
-                {
-                  author: "Ryan Teague Beckwith",
-                  text: "I'm actually wondering if this 'babies are dicks' thing isn't just a spectacular misunderstanding of the birds and the bees talk.",
-                  likes: 0,
-                  timestamp: "16 hrs",
-                },
-              ]}
-              totalComments={15}
-            />
+          {/* Posts */}
+          <NewsFeedPost
+            author="Vivian Wang"
+            authorAvatar="/asian-woman-portrait.png"
+            timestamp="Just now"
+            content="Colorful day on the boardwalk!"
+            imageUrl="https://images.ft.com/v3/image/raw/https%3A%2F%2Fd1e00ek4ebabms.cloudfront.net%2Fproduction%2Fa83289ad-567a-4403-a536-099f3d376ce4.jpg?source=next-article&fit=scale-down&quality=highest&width=700&dpr=1"
+            imageAlt="Aerial view of colorful carnival"
+          />
 
-            <PostCard
-              author="Alex Fitzpatrick"
-              timestamp="February 2 at 12:04pm"
-              content="Looking forward to the weekend!"
-              likes={15}
-              likedBy={["Sarah Johnson", "Mike Chen"]}
-              comments={[]}
-              totalComments={0}
-              
-            />
-          </main>
+          <NewsFeedPost
+            author="Matt Viscomi"
+            authorAvatar="/thoughtful-man-portrait.png"
+            timestamp="5 mins"
+            content="I can't wait to visit Iceland next week!"
+            imageUrl="https://images.ft.com/v3/image/raw/https%3A%2F%2Fd1e00ek4ebabms.cloudfront.net%2Fproduction%2Fa83289ad-567a-4403-a536-099f3d376ce4.jpg?source=next-article&fit=scale-down&quality=highest&width=700&dpr=1"
+            imageAlt="Bowl of soup"
+          />
+        </main>
 
-          {/* Right Sidebar - Timeline Years */}
-          <aside className="hidden lg:block">
-            <TimelineSection />
-          </aside>
-        </div>
+        {/* Right Sidebar */}
+        <NewsFeedRightSidebar />
       </div>
     </div>
   )

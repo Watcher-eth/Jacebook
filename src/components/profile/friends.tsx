@@ -27,7 +27,7 @@ export function FriendsSection() {
         {friends.map((friend) => (
           <div key={friend.name} className="relative group cursor-pointer">
             <Avatar className="h-[90px] w-full rounded-md">
-              <AvatarImage className="rounded-md" src={`/.jpg?height=90&width=90&query=${friend.name}`} />
+              <AvatarImage className="rounded-md" src={``} />
               <AvatarFallback className="rounded-md">{friend.initials}</AvatarFallback>
             </Avatar>
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">

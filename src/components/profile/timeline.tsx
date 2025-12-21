@@ -1,6 +1,7 @@
-const years = ["Recent", "2015", "2014", "2013", "2012", "2011", "2010", "2009", "2008", "2007", "2006", "Born"]
+// src/components/profile/timeline.tsx
+const defaultYears = ["Recent", "2015", "2014", "2013", "2012", "2011", "2010", "2009", "2008", "2007", "2006", "Born"];
 
-export function TimelineSection() {
+export function TimelineSection({ years = defaultYears }: { years?: string[] }) {
   return (
     <div className="relative">
       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border" />
@@ -17,5 +18,5 @@ export function TimelineSection() {
         ))}
       </div>
     </div>
-  )
+  );
 }

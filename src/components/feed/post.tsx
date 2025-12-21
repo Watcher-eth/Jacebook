@@ -2,6 +2,7 @@ import { MoreHorizontal, Globe, ThumbsUp, MessageCircle, Share2, Camera } from "
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { avatarPlaceholderDataUri } from "@/lib/people"
 
 interface NewsFeedPostProps {
   author: string
@@ -12,21 +13,25 @@ interface NewsFeedPostProps {
   imageAlt?: string
 }
 
-export function NewsFeedPost({ author, authorAvatar, timestamp, content, imageUrl= "https://images.ft.com/v3/image/raw/https%3A%2F%2Fd1e00ek4ebabms.cloudfront.net%2Fproduction%2Fa83289ad-567a-4403-a536-099f3d376ce4.jpg?source=next-article&fit=scale-down&quality=highest&width=700&dpr=1", imageAlt }: NewsFeedPostProps) {
-  return (
+
+  export function NewsFeedPost({ imageUrl, ...props }: NewsFeedPostProps) {
+      const fallback = avatarPlaceholderDataUri(props.author, 64);
+      const src = imageUrl ?? fallback;
+
+    return (
     <div className=" rounded-lg">
       {/* Post Header */}
       <div className="p-3 pb-0 bg-white rounded-lg">
       <div className="flex items-start justify-between mb-2">
         <div className="flex gap-2">
           <Avatar className="h-10 w-10 rounded-sm">
-            <AvatarImage className="rounded-sm" src={authorAvatar || "/placeholder.svg"} />
-            <AvatarFallback className="rounded-sm">{author.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarImage className="rounded-sm" src={props.authorAvatar || "/placeholder.svg"} />
+            <AvatarFallback className="rounded-sm">{props.author.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-semibold text-sm text-primary hover:underline cursor-pointer">{author}</p>
+            <p className="font-semibold text-sm text-primary hover:underline cursor-pointer">{props.author}</p>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <span>{timestamp}</span>
+              <span>{props.timestamp}</span>
               <span>·</span>
               <Globe className="h-3 w-3" />
             </div>
@@ -39,15 +44,26 @@ export function NewsFeedPost({ author, authorAvatar, timestamp, content, imageUr
 
       {/* Post Content */}
       <div className="my-3">
-        <p className="text-sm text-foreground">{content}</p>
+        <p className="text-sm text-foreground">{props.content}</p>
       </div>
 
       {/* Post Image */}
-      {imageUrl && (
-        <div className="mb-0">
-          <img src={imageUrl || "/https://images.ft.com/v3/image/raw/https%3A%2F%2Fd1e00ek4ebabms.cloudfront.net%2Fproduction%2Fa83289ad-567a-4403-a536-099f3d376ce4.jpg?source=next-article&fit=scale-down&quality=highest&width=700&dpr=1"} alt={imageAlt || ""} className="w-full" />
-        </div>
-      )}
+  <div className="mb-0">
+    <img
+      src={src}
+      alt={props.imageAlt || ""}
+      className="w-full"
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        console.log("[img ok]", img.src, img.naturalWidth, img.naturalHeight);
+      }}
+      onError={(e) => {
+        const img = e.currentTarget as HTMLImageElement;
+        console.error("[img fail]", { src: img.src, currentSrc: img.currentSrc });
+      }}
+    />
+  </div>
+
 
       {/* Action Buttons */}
       <div className="flex gap-2 items-center mt-1.5 -mb-1.5">
