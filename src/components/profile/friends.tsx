@@ -29,9 +29,12 @@ const epsteinFriend = {
 export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean }) {
   const { friends, loading } = props;
 
+const hasEpstein = friends?.filter((f) => f.slug === "jeffrey-epstein")[0]
 
-
-  const friendsWithEpstein = [...friends, epsteinFriend];
+  const friendsWithEpstein = [...friends];
+  if (!hasEpstein) {
+    friendsWithEpstein.push(epsteinFriend)
+  }
   const count = friendsWithEpstein.length;
 
   return (
@@ -58,15 +61,15 @@ export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean
       ) : (
         <div className="grid grid-cols-3 gap-2 mt-1.5">
           {friendsWithEpstein.map((f) => (
-            <Link key={f.slug} href={`/${f.slug}`} className="relative group cursor-pointer hover:scale-101 active:scale-99">
+            <Link key={f?.slug} href={`/${f?.slug}`} className="relative group cursor-pointer hover:scale-101 active:scale-99">
               <Avatar className="h-[95px] w-full rounded-md">
-                <AvatarImage className="rounded-md object-cover" src={f.avatarUrl || ""} />
-                <AvatarFallback className="rounded-md">{initialsFromName(f.name)}</AvatarFallback>
+                <AvatarImage className="rounded-md object-cover" src={f?.avatarUrl || ""} />
+                <AvatarFallback className="rounded-md">{initialsFromName(f?.name || "")}</AvatarFallback>
               </Avatar>
 
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
                 <p className="text-white text-xs font-semibold leading-tight line-clamp-2">
-                  {f.name}
+                  {f?.name}
                 </p>
               </div>
             </Link>
