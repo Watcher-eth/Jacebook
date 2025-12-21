@@ -22,7 +22,7 @@ export function CreatePost() {
       <input
         type="text"
         placeholder="What's on your mind?"
-        className="w-full font-semibold bg-white rounded px-3 mx-0 py-0 text-md focus:outline-none focus:border-primary"
+        className="w-full  font-semibold bg-white rounded px-3 mx-0 py-0 text-md focus:outline-none focus:border-primary"
       />
     </div>
   )

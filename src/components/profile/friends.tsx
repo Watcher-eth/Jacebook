@@ -19,10 +19,20 @@ function initialsFromName(name: string) {
   return (a + b).toUpperCase();
 }
 
+const epsteinFriend = {
+  slug: "jeffrey-epstein",
+  name: "Jeffrey Epstein",
+  weight: 1,
+  avatarUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg"
+}
+
 export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean }) {
   const { friends, loading } = props;
 
-  const count = friends.length;
+
+
+  const friendsWithEpstein = [...friends, epsteinFriend];
+  const count = friendsWithEpstein.length;
 
   return (
     <Card className="p-4">
@@ -46,10 +56,10 @@ export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean
       </div> :count === 0 ? (
         <div className="text-sm text-muted-foreground">No friends yet.</div>
       ) : (
-        <div className="grid grid-cols-3 gap-2">
-          {friends.map((f) => (
-            <Link key={f.slug} href={`/${f.slug}`} className="relative group cursor-pointer">
-              <Avatar className="h-[90px] w-full rounded-md">
+        <div className="grid grid-cols-3 gap-2 mt-1.5">
+          {friendsWithEpstein.map((f) => (
+            <Link key={f.slug} href={`/${f.slug}`} className="relative group cursor-pointer hover:scale-101 active:scale-99">
+              <Avatar className="h-[95px] w-full rounded-md">
                 <AvatarImage className="rounded-md object-cover" src={f.avatarUrl || ""} />
                 <AvatarFallback className="rounded-md">{initialsFromName(f.name)}</AvatarFallback>
               </Avatar>
@@ -57,7 +67,6 @@ export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
                 <p className="text-white text-xs font-semibold leading-tight line-clamp-2">
                   {f.name}
-                  <span className="ml-1 text-white/70 font-normal">· {f.weight}</span>
                 </p>
               </div>
             </Link>

@@ -112,7 +112,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
   function goToPerson(name: string) {
     const slug = slugifyName(name);
     close();
-    router.push(`/people/${slug}`);
+    router.push(`/${slug}`);
   }
 
   // Prevent “focus → open → popover steals focus → blur → close” flicker.

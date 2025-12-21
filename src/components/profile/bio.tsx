@@ -54,8 +54,7 @@ export function BioSection({
             <div>
               <span className="text-foreground">Born: </span>
               <span className="font-semibold text-primary">
-                {wikidata?.dob ?? "Unknown"}
-                {typeof wikidata?.age === "number" ? ` (${wikidata.age})` : ""}
+                {wikidata?.dob?.replaceAll("-", "/") ?? "Unknown"}
               </span>
             </div>
           </div>
@@ -70,8 +69,8 @@ export function BioSection({
             <div className="text-foreground">
               {jobs.length ? (
                 <>
-                  <span className="font-semibold text-primary">{jobs.slice(0, 3).join(", ")}</span>
-                  {jobs.length > 3 ? <span className="text-muted-foreground">, …</span> : null}
+                  <span className="font-semibold text-primary">{jobs.slice(0, 4).join(", ")}</span>
+                  {jobs.length > 4 ? <span className="text-muted-foreground">, …</span> : null}
                 </>
               ) : (
                 "Occupation unknown"

@@ -1,20 +1,21 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChevronDown, MessageSquare, Calendar, TreePine, Plus } from "lucide-react"
+import Link from "next/link"
 
 export function NewsFeedSidebar() {
   return (
     <aside className="w-[180px] py-4 space-y-0.5">
       {/* Profile Section */}
-      <div className="flex items-center gap-0.5 px-2 py-1.5 pt-2 hover:bg-muted/50 rounded cursor-pointer">
+      <Link href="/jeffrey-epstein" className="flex items-center gap-0.5 px-2 py-1.5 pt-2 hover:bg-muted/50 rounded cursor-pointer">
         <Avatar className="h-10 w-10">
-          <AvatarImage src="/professional-person-portrait.png" />
+          <AvatarImage className="object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg" />
           <AvatarFallback>AC</AvatarFallback>
         </Avatar>
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-foreground">Andy Chung</p>
+        <div className="flex-1 min-w-0 ml-1">
+          <p className="font-semibold text-sm text-foreground">Jeffrey Epstein</p>
           <p className="text-xs text-muted-foreground">Edit Profile</p>
         </div>
-      </div>
+      </Link>
 
       {/* News Feed */}
       <button className="flex items-center gap-0.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">

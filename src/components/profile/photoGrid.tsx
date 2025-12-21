@@ -20,7 +20,7 @@ export function PhotoGrid({ photos }: { photos: PhotoItem[] }) {
       <div className="grid grid-cols-3 gap-2">
         {photos.map((p) => {
           const img = (
-            <div className="relative w-full aspect-square overflow-hidden bg-muted">
+            <div className="relative w-full aspect-square overflow-hidden bg-muted hover:scale-101 active:scale-99">
               <img src={p.imageUrl} alt={p.label || ""} className="absolute inset-0 w-full h-full object-cover" />
             </div>
           );

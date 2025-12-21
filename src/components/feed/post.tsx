@@ -1,21 +1,11 @@
 import Link from "next/link";
+import React from "react";
 import { MoreHorizontal, Globe, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { avatarPlaceholderDataUri } from "@/lib/people"
-import React from "react"
+import { slugifyName } from "@/lib/people"
 
 type WithPerson = { name: string; slug: string };
-
-interface NewsFeedPostProps {
-  author: string;
-  authorAvatar: string;
-  timestamp: string;
-  content: string;
-  imageUrl?: string;
-  imageAlt?: string;
-  withPeople?: WithPerson[];
-}
 
 function initialsFromName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -45,7 +35,6 @@ export function NewsFeedPost({
   const [src, setSrc] = React.useState(imageUrl || "");
   const [didUpgrade, setDidUpgrade] = React.useState(false);
 
-  // keep src in sync if navigating
   React.useEffect(() => {
     setSrc(imageUrl || "");
     setDidUpgrade(false);
@@ -54,10 +43,18 @@ export function NewsFeedPost({
   React.useEffect(() => {
     if (!hqImageUrl || didUpgrade) return;
 
-    // first post: upgrade immediately
+    const upgrade = () => {
+      const img = new Image();
+      img.decoding = "async";
+      img.onload = () => {
+        setSrc(hqImageUrl);
+        setDidUpgrade(true);
+      };
+      img.src = hqImageUrl;
+    };
+
     if (priorityImage) {
-      setSrc(hqImageUrl);
-      setDidUpgrade(true);
+      upgrade();
       return;
     }
 
@@ -68,11 +65,10 @@ export function NewsFeedPost({
       (entries) => {
         const e = entries[0];
         if (!e?.isIntersecting) return;
-        setSrc(hqImageUrl);
-        setDidUpgrade(true);
+        upgrade();
         io.disconnect();
       },
-      { root: null, rootMargin: "600px 0px", threshold: 0.01 } // start loading before visible
+      { root: null, rootMargin: "800px 0px", threshold: 0.01 }
     );
 
     io.observe(el);
@@ -80,30 +76,30 @@ export function NewsFeedPost({
   }, [hqImageUrl, didUpgrade, priorityImage]);
 
   return (
-    <div className="rounded-lg">
+    // ✅ IMPORTANT: attach ref here
+    <div ref={ref} className="rounded-lg ">
       <div className="p-3 pb-0 bg-white rounded-lg">
         <div className="flex items-start justify-between mb-2">
           <div className="flex gap-2 items-center">
-             <Avatar className="h-12 w-12 rounded-sm">
-              <AvatarImage className="rounded-sm object-cover" src={props.authorAvatar || "/placeholder.svg"} />
-              {props.authorAvatar ? <AvatarFallback className="rounded-sm">{initialsFromName(props.author)}</AvatarFallback> : null}
-            </Avatar> 
+            
+          <Link href={`/${slugifyName(props.author)}`}><Avatar className="h-12 w-12 rounded-sm">
+              <AvatarImage className="rounded-sm object-cover" src={props.authorAvatar || ""} />
+              {!props.authorAvatar ? (
+                <AvatarFallback className="rounded-sm">{initialsFromName(props.author)}</AvatarFallback>
+              ) : null}
+            </Avatar></Link>
 
             <div className="min-w-0">
-              <p className="font-semibold text-sm text-primary hover:underline cursor-pointer">
+              <Link href={`/${slugifyName(props.author)}`} className="font-semibold text-sm text-primary hover:underline cursor-pointer">
                 {props.author}
-              </p>
+              </Link>
 
-              {/* WITH <NAME> */}
               {withPeople && withPeople.length > 0 && (
                 <div className="text-xs text-muted-foreground leading-tight">
                   <span className="mr-1">with</span>
                   {withPeople.slice(0, 3).map((p, i) => (
                     <span key={p.slug}>
-                      <Link
-                        href={`/${p.slug}`}
-                        className="text-primary hover:underline"
-                      >
+                      <Link href={`/${p.slug}`} className="text-primary hover:underline">
                         {p.name}
                       </Link>
                       {i < Math.min(withPeople.length, 3) - 1 ? ", " : ""}
@@ -126,18 +122,20 @@ export function NewsFeedPost({
           </Button>
         </div>
 
-  
-
         <div className="mb-0">
-        <img
-          src={src}
-          alt={props.imageAlt || ""}
-          className="w-full"
-          loading={priorityImage ? "eager" : "lazy"}
-          decoding="async"
-          fetchPriority={priorityImage ? "high" : "auto"}
-        />
-      </div>
+          <img
+            src={src}
+            alt={props.imageAlt || ""}
+            className="w-full"
+            loading={priorityImage ? "eager" : "lazy"}
+            decoding="async"
+            fetchPriority={priorityImage ? "high" : "auto"}
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              console.error("[post img fail]", { src: img.src, currentSrc: img.currentSrc });
+            }}
+          />
+        </div>
 
         <div className="flex gap-2 items-center mt-1.5 -mb-1.5">
           <div className="h-7 text-xs text-primary hover:text-foreground">Like</div>
@@ -146,10 +144,10 @@ export function NewsFeedPost({
         </div>
       </div>
 
-      <div className="flex gap-2 mt-2 bg-white/30 p-2">
-        <Avatar className="h-8 w-8 rounded-sm border-border border">
-          <AvatarImage className="rounded-sm" src="/diverse-user-avatars.png" />
-          <AvatarFallback className="rounded-sm">Y</AvatarFallback>
+      <div className="flex items-center gap-2 mt-2 bg-white/30 p-2">
+        <Avatar className="h-9 w-9 rounded-sm border-border border">
+          <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg" />
+          <AvatarFallback className="rounded-sm">JE</AvatarFallback>
         </Avatar>
 
         <div className="flex-1 relative border border-border/50 rounded-md">

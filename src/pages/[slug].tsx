@@ -244,14 +244,18 @@ const hqUrl = pageJpegUrlFast(key, previewPage);
 export default function PersonPage(props: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { name, years, posts, count, profileAvatarUrl, coverUrl, slug, wikidataName } = props;
   const [tab, setTab] = React.useState<ProfileTab>("timeline");
-
+  const [feedPosts, setFeedPosts] = React.useState<PagePost[]>(props.posts);
+  const [cursor, setCursor] = React.useState<string | null>(props.nextCursor);
+  const [loadingMore, setLoadingMore] = React.useState(false);
+  const loadRef = React.useRef<HTMLDivElement | null>(null);
+  
   // Friends: client-side (server cached)
   const friendsRes = useJson<{ friends: FriendEdge[] }>(
     `/api/people/friends?slug=${encodeURIComponent(slug)}`
   );
 
   // WITH people: client-side batch (server cached)
-  const postKeys = React.useMemo(() => posts.map((p) => p.key), [posts]);
+  const postKeys = React.useMemo(() => feedPosts.map((p) => p.key), [feedPosts]);
   const withRes = useJson<{ withByKey: Record<string, WithPerson[]> }>(
     postKeys.length
       ? `/api/people/with-people?slug=${encodeURIComponent(slug)}&keys=${encodeURIComponent(postKeys.join(","))}`
@@ -263,13 +267,55 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
     `/api/people/wikidata?name=${encodeURIComponent(wikidataName)}`
   );
 
-  const postsHydrated = React.useMemo(() => {
-    const map = withRes.data?.withByKey;
-    if (!map) return posts;
-    return posts.map((p) => ({ ...p, withPeople: map[p.key] || p.withPeople }));
-  }, [posts, withRes.data]);
+  React.useEffect(() => {
+    setFeedPosts(props.posts);
+    setCursor(props.nextCursor);
+  }, [props.posts, props.nextCursor, slug]);
+  
+  React.useEffect(() => {
+    const el = loadRef.current;
+    if (!el || !cursor || loadingMore) return;
+  
+    const io = new IntersectionObserver(
+      async (entries) => {
+        const e = entries[0];
+        if (!e?.isIntersecting) return;
+        io.disconnect();
+  
+        setLoadingMore(true);
+        try {
+          const r = await fetch(
+            `/api/people/posts?slug=${encodeURIComponent(slug)}&cursor=${encodeURIComponent(cursor)}&limit=12`,
+            { headers: { Accept: "application/json" } }
+          );
+          if (!r.ok) throw new Error(String(r.status));
+          const j = (await r.json()) as { posts: PagePost[]; nextCursor: string | null };
+  
+          setFeedPosts((prev) => {
+            const seen = new Set(prev.map((p) => p.key));
+            const more = (j.posts || []).filter((p) => !seen.has(p.key));
+            return [...prev, ...more];
+          });
+          setCursor(j.nextCursor);
+        } finally {
+          setLoadingMore(false);
+        }
+      },
+      { root: null, rootMargin: "1200px 0px", threshold: 0.01 }
+    );
+  
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cursor, slug, loadingMore]);
 
-  const photos = React.useMemo(() => {
+
+const postsHydrated = React.useMemo(() => {
+  const map = withRes.data?.withByKey;
+  if (!map) return feedPosts;
+  return feedPosts.map((p) => ({ ...p, withPeople: map[p.key] || p.withPeople }));
+}, [feedPosts, withRes.data]);
+
+const photos = React.useMemo(() => {
     return postsHydrated
       .filter((p) => !!p.imageUrl)
       .map((p) => ({
@@ -279,6 +325,8 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
         label: p.content,
       }));
   }, [postsHydrated]);
+
+
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -296,6 +344,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
         avatarUrl={wdRes?.data?.wikidata?.imageUrl ?? profileAvatarUrl}
         activeTab={tab}
         onTabChange={setTab}
+        friendsCount={friendsRes.data?.friends?.length ?? 0}
       />
 
       <div className="max-w-[1050px] mx-auto px-4 py-5">
@@ -310,19 +359,25 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
               <>
                 <CreatePost />
                 {postsHydrated.map((p, i) => (
-                  <div key={p.key}>
-                   <NewsFeedPost
-                    author={name}
-                    authorAvatar={wdRes?.data?.wikidata?.imageUrl!}
-                    timestamp={p.timestamp}
-                    content={p.content}
-                    imageUrl={p.imageUrl}      
-                    hqImageUrl={p.hqImageUrl}  
-                    withPeople={p.withPeople}
-                    priorityImage={i === 0}
-                    />
-                  </div>
-                ))}
+  <div key={p.key}>
+    <NewsFeedPost
+      author={name}
+      authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
+      timestamp={p.timestamp}
+      content={p.content}
+      imageUrl={p.imageUrl}
+      hqImageUrl={p.hqImageUrl}
+      withPeople={p.withPeople}
+      priorityImage={i === 0}
+    />
+  </div>
+))}
+
+<div ref={loadRef} className="h-10" />
+
+{loadingMore ? (
+  <div className="text-center text-sm text-muted-foreground py-4">Loading more…</div>
+) : null}
                 {props.nextCursor ? (
                   <div className="text-center text-sm text-muted-foreground py-4">
                     Showing {postsHydrated.length} posts • load more coming next

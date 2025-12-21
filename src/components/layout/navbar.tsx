@@ -3,15 +3,17 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PeopleSearchPopover } from "./SearchPopover"
+import { useRouter } from "next/navigation"
 
 export function FacebookNavbar() {
+  const router = useRouter();
   return (
     <nav className="bg-primary text-primary-foreground shadow-sm border-b border-primary/20 sticky top-0 z-50">
       <div className="max-w-[1920px] mx-auto px-4">
         <div className="flex items-center justify-between h-11">
           <div className="flex items-center flex-1"></div>
           <div className="flex items-center flex-1">
-            <svg className="w-7 h-7 bg-white rounded-md" viewBox="0 0 36 36" fill="currentColor">
+            <svg onClick={() => router.push("/")} className="w-7 h-7 bg-white rounded-md mr-2 hover:scale-101 active:scale-99 cursor-pointer" viewBox="0 0 36 36" fill="currentColor">
               <path d="M20.181 35.87C29.094 34.791 36 27.202 36 18c0-9.941-8.059-18-18-18S0 8.059 0 18c0 8.442 5.811 15.526 13.652 17.471L14 34h5.5l.681 1.87Z" />
               <path
                 fill="#3b5998"
@@ -26,40 +28,40 @@ export function FacebookNavbar() {
           <div className="flex items-center gap-2 flex-1 justify-end">
             <div className="hidden md:flex items-center gap-1.5 text-sm font-medium">
               <Avatar className="h-5 w-5">
-                <AvatarImage className="object-cover" src="https://jacebook-worker.jacebook.workers.dev/thumbnails/VOL00002/IMAGES/0001/EFTA00003324.jpg?v=20251221" />
+                <AvatarImage className="object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg" />
                 <AvatarFallback className="text-xs">J</AvatarFallback>
               </Avatar>
               <span className="text-sm">Jeffrey</span>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs px-2 hover:bg-primary-foreground/10">
+            <Button onClick={() => router.push("/")} variant="ghost" size="sm" className="h-7 text-xs px-2 hover:bg-primary-foreground/10 hover:text-white">
               Home
             </Button>
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 "
+                className="h-7 w-7 hover:bg-primary-foreground/10 hover:text-white"
               >
                 <Users className="h-4 w-4 text-primary-foreground/40 hover:text-primary-foreground/25" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 "
+                className="h-7 w-7 hover:bg-primary-foreground/10 hover:text-white"
               >
                 <MessageCircle className="h-4 w-4 text-primary-foreground/40 hover:text-primary-foreground/25" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 "
+                className="h-7 w-7 hover:bg-primary-foreground/10 hover:text-white"
               >
                 <Bell className="h-4 w-4 text-primary-foreground/40 hover:text-primary-foreground/25" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 "
+                className="h-7 w-7 hover:bg-primary-foreground/10 hover:text-white"
               >
                 <Menu className="h-4 w-4 text-primary-foreground/40 hover:text-primary-foreground/25" />
               </Button>

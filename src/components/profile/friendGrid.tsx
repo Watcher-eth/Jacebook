@@ -14,6 +14,8 @@ function initialsFromName(name: string) {
   return (a + b).toUpperCase();
 }
 
+
+
 export function FriendGrid({ friends }: { friends: FriendEdge[] }) {
   return (
     <Card className="p-4 bg-white">
@@ -24,7 +26,7 @@ export function FriendGrid({ friends }: { friends: FriendEdge[] }) {
 
       <div className="grid grid-cols-1 gap-3">
         {friends.map((f) => (
-          <div key={f.slug} className="flex items-center gap-3 border border-border rounded-lg p-2 bg-white">
+          <div key={f.slug} className="flex items-center gap-3 border border-border rounded-lg p-2 bg-white hover:scale-101 active:scale-99">
             <Avatar className="h-[72px] w-[72px] rounded-sm flex-shrink-0">
               <AvatarImage className="rounded-sm object-cover" src={f.avatarUrl || ""} />
               <AvatarFallback className="rounded-sm">{initialsFromName(f.name)}</AvatarFallback>

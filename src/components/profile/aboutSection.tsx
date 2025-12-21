@@ -29,7 +29,8 @@ export function AboutSection({
         <div className="text-sm text-muted-foreground">
           {wikidata?.nationality ? <span>{wikidata.nationality}</span> : null}
           {wikidata?.nationality && wikidata?.gender ? <span> · </span> : null}
-          {wikidata?.gender ? <span>{wikidata.gender}</span> : null}
+          {wikidata?.gender ? <span>{wikidata.gender.charAt(0).toUpperCase() + wikidata.gender.slice(1)}</span> : null}
+          {typeof wikidata?.age === "number" ? ` · ${wikidata.age} Years old` : ""}
         </div>
       )}
 
