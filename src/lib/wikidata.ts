@@ -2,13 +2,33 @@
 export type WikidataProfile = {
     qid: string;
     name: string;
+  
     bio?: string;
   
-    dob?: string;      // ISO YYYY-MM-DD (best-effort)
+    dob?: string; // YYYY-MM-DD
     age?: number;
   
-    occupation?: string;
-    relationship?: string; // e.g. "Married (spouse: ...)" or "Single/Unknown"
+    occupations?: string[]; // multiple
+    nationality?: string;
+    gender?: string;
+  
+    // relationship summary (best-effort, tries to avoid stale spouse data)
+    relationship?: string;
+  
+    // public-facing "profile-ish" extras
+    imageUrl?: string; // commons -> direct file url
+    officialWebsite?: string;
+  
+    socials?: Partial<{
+      twitter: string; // @handle or url
+      instagram: string;
+      tiktok: string;
+      youtube: string; // channel id or url
+      facebook: string;
+      imdb: string;
+      wikidata: string; // QID link
+      wikipedia: string; // page link if found
+    }>;
   };
   
   const WD_API = "https://www.wikidata.org/w/api.php";
@@ -26,28 +46,18 @@ export type WikidataProfile = {
   function wdUrl(params: Record<string, string>) {
     const u = new URL(WD_API);
     for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-    // origin=* helps in browsers; SSR doesn't need it, but harmless.
     u.searchParams.set("origin", "*");
     return u.toString();
   }
   
   async function fetchJson<T>(url: string): Promise<T> {
-    const r = await fetch(url, {
-      headers: { Accept: "application/json" },
-      // Next.js (pages router) SSR: this prevents caching surprises while iterating
-      cache: "no-store",
-    });
+    const r = await fetch(url, { headers: { Accept: "application/json" } });
     if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
     return r.json() as Promise<T>;
   }
   
   type WbSearchEntitiesResp = {
-    search: Array<{
-      id: string;          // Q...
-      label?: string;
-      description?: string;
-      match?: any;
-    }>;
+    search: Array<{ id: string; label?: string; description?: string }>;
   };
   
   async function wdSearchBestQid(name: string): Promise<{ qid: string; label?: string; description?: string } | null> {
@@ -67,8 +77,6 @@ export type WikidataProfile = {
     return { qid: best.id, label: best.label, description: best.description };
   }
   
-  // --- wbgetentities (claims) ---
-  
   type WbGetEntitiesResp = {
     entities: Record<
       string,
@@ -77,28 +85,22 @@ export type WikidataProfile = {
         labels?: Record<string, { value: string }>;
         descriptions?: Record<string, { value: string }>;
         claims?: Record<string, any[]>;
-        sitelinks?: Record<string, { title: string }>;
+        sitelinks?: Record<string, { title: string; url?: string }>;
       }
     >;
   };
   
   function pickEnLabel(e: any) {
-    return e?.labels?.en?.value || e?.labels?.en?.value;
+    return e?.labels?.en?.value;
   }
-  
   function pickEnDescription(e: any) {
     return e?.descriptions?.en?.value;
-  }
-  
-  function firstClaim(claims: any[] | undefined) {
-    return Array.isArray(claims) && claims.length ? claims[0] : null;
   }
   
   function allClaims(claims: any[] | undefined) {
     return Array.isArray(claims) ? claims : [];
   }
   
-  // P569: time value looks like "+1955-01-01T00:00:00Z"
   function parseWdTimeValue(v: any): string | undefined {
     const t = v?.time;
     if (typeof t !== "string") return undefined;
@@ -139,16 +141,90 @@ export type WikidataProfile = {
     return out;
   }
   
-  async function wikipediaSummary(title: string): Promise<string | undefined> {
+  async function wikipediaSummary(title: string): Promise<{ extract?: string; pageUrl?: string } | null> {
     const url = `${WP_SUMMARY}/${encodeURIComponent(title)}`;
     try {
-      const r = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
-      if (!r.ok) return undefined;
+      const r = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!r.ok) return null;
       const j = (await r.json()) as any;
-      return asText(j?.extract);
+      return {
+        extract: asText(j?.extract),
+        pageUrl: asText(j?.content_urls?.desktop?.page) || asText(j?.content_urls?.mobile?.page),
+      };
     } catch {
-      return undefined;
+      return null;
     }
+  }
+  
+  function commonsFileToUrl(file: string): string | undefined {
+    const f = asText(file);
+    if (!f) return undefined;
+    // Basic direct file URL; good enough for avatars. (Commons also has special thumbnail APIs.)
+    const name = f.replace(/^File:/i, "").replace(/\s+/g, "_");
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}`;
+  }
+  
+  function claimString(claims: any[] | undefined): string | undefined {
+    const c = allClaims(claims)[0];
+    const v = c?.mainsnak?.datavalue?.value;
+    if (typeof v === "string") return v;
+    return undefined;
+  }
+  
+  function claimEntityId(c: any): string | undefined {
+    const id = c?.mainsnak?.datavalue?.value?.id;
+    return typeof id === "string" ? id : undefined;
+  }
+  
+  function claimQualifierTime(c: any, pid: string): string | undefined {
+    const q = c?.qualifiers?.[pid];
+    const first = Array.isArray(q) ? q[0] : null;
+    const t = first?.datavalue?.value;
+    return parseWdTimeValue(t);
+  }
+  
+  function pickMostRelevantRelationship(args: {
+    spouseClaims: any[];
+    partnerClaims: any[];
+  }): { kind: "spouse" | "partner"; qid: string; start?: string; end?: string } | null {
+    // Prefer entries with no end date (ongoing) and most recent start date.
+    function rank(c: any) {
+      const start = claimQualifierTime(c, "P580"); // start time
+      const end = claimQualifierTime(c, "P582"); // end time
+      const ongoing = end ? 0 : 1;
+      // sort by ongoing desc, then start desc (lex works on YYYY-MM-DD)
+      return { ongoing, start: start || "0000-00-00", end };
+    }
+  
+    const spouse = allClaims(args.spouseClaims)
+      .map((c) => {
+        const qid = claimEntityId(c);
+        if (!qid) return null;
+        const r = rank(c);
+        return { kind: "spouse" as const, qid, start: r.start, end: r.end, ongoing: r.ongoing };
+      })
+      .filter(Boolean) as any[];
+  
+    const partner = allClaims(args.partnerClaims)
+      .map((c) => {
+        const qid = claimEntityId(c);
+        if (!qid) return null;
+        const r = rank(c);
+        return { kind: "partner" as const, qid, start: r.start, end: r.end, ongoing: r.ongoing };
+      })
+      .filter(Boolean) as any[];
+  
+    const all = [...spouse, ...partner];
+    if (!all.length) return null;
+  
+    all.sort((a, b) => {
+      if (a.ongoing !== b.ongoing) return b.ongoing - a.ongoing;
+      if (a.start !== b.start) return String(b.start).localeCompare(String(a.start));
+      return a.kind === "spouse" ? -1 : 1;
+    });
+  
+    const best = all[0]!;
+    return { kind: best.kind, qid: best.qid, start: best.start, end: best.end };
   }
   
   export async function fetchWikidataProfileByName(name: string): Promise<WikidataProfile | null> {
@@ -170,43 +246,92 @@ export type WikidataProfile = {
     const label = pickEnLabel(ent) || hit.label || name;
     const desc = pickEnDescription(ent) || hit.description;
   
-    // --- DOB (P569) ---
-    const dobClaim = firstClaim(ent.claims?.P569);
+    // core IDs/links
+    const wikiTitle = ent.sitelinks?.enwiki?.title;
+    const wikidataLink = `https://www.wikidata.org/wiki/${hit.qid}`;
+  
+    // DOB (P569)
+    const dobClaim = allClaims(ent.claims?.P569)[0];
     const dobIso = parseWdTimeValue(dobClaim?.mainsnak?.datavalue?.value);
     const age = dobIso ? calcAge(dobIso) : undefined;
   
-    // --- Occupation (P106) ---
+    // Occupation (P106) - allow multiple, not just 1
     const occClaims = allClaims(ent.claims?.P106);
     const occQids = clamp(
-      occClaims
-        .map((c) => c?.mainsnak?.datavalue?.value?.id)
-        .filter((x: any) => typeof x === "string"),
-      1
+      occClaims.map(claimEntityId).filter((x): x is string => !!x),
+      4
     );
   
-    // --- Spouse (P26) ---
+    // Nationality (P27)
+    const natQid = claimEntityId(allClaims(ent.claims?.P27)[0]);
+  
+    // Gender (P21)
+    const genderQid = claimEntityId(allClaims(ent.claims?.P21)[0]);
+  
+    // Relationship: spouse (P26), partner (P451)
     const spouseClaims = allClaims(ent.claims?.P26);
-    const spouseQids = clamp(
-      spouseClaims
-        .map((c) => c?.mainsnak?.datavalue?.value?.id)
-        .filter((x: any) => typeof x === "string"),
-      1
-    );
+    const partnerClaims = allClaims(ent.claims?.P451);
+    const relBest = pickMostRelevantRelationship({ spouseClaims, partnerClaims });
   
-    const labels = await wdLabelForQids([...occQids, ...spouseQids]);
+    const relQids = [
+      ...occQids,
+      ...(natQid ? [natQid] : []),
+      ...(genderQid ? [genderQid] : []),
+      ...(relBest?.qid ? [relBest.qid] : []),
+    ];
   
-    const occupation = occQids[0] ? labels.get(occQids[0]) : undefined;
+    const labels = await wdLabelForQids(relQids);
+  
+    const occupations = occQids.map((q) => labels.get(q) || q).filter(Boolean);
+  
+    const nationality = natQid ? labels.get(natQid) || natQid : undefined;
+    const gender = genderQid ? labels.get(genderQid) || genderQid : undefined;
   
     let relationship: string | undefined;
-    if (spouseQids[0]) {
-      relationship = `Married (spouse: ${labels.get(spouseQids[0]) ?? spouseQids[0]})`;
+    if (relBest?.qid) {
+      const who = labels.get(relBest.qid) || relBest.qid;
+      const range =
+        relBest.start && relBest.start !== "0000-00-00"
+          ? relBest.end && relBest.end !== "0000-00-00"
+            ? ` (${relBest.start}–${relBest.end})`
+            : ` (since ${relBest.start})`
+          : "";
+      relationship = relBest.kind === "spouse" ? `Married (spouse: ${who})${range}` : `Partner: ${who}${range}`;
     } else {
       relationship = "Unknown";
     }
   
-    // Prefer Wikipedia summary if available, else fall back to Wikidata description.
-    const wikiTitle = ent.sitelinks?.enwiki?.title;
-    const bio = (wikiTitle ? await wikipediaSummary(wikiTitle) : undefined) || desc;
+    // Image (P18) commons filename
+    const imageFile = claimString(ent.claims?.P18);
+    const imageUrl = imageFile ? commonsFileToUrl(imageFile) : undefined;
+  
+    // Official website (P856)
+    const officialWebsite = claimString(ent.claims?.P856);
+  
+    // Socials / IDs
+    const twitter = claimString(ent.claims?.P2002);   // Twitter username
+    const instagram = claimString(ent.claims?.P2003); // Instagram username
+    const tiktok = claimString(ent.claims?.P7085);    // TikTok username
+    const youtube = claimString(ent.claims?.P2397);   // YouTube channel ID
+    const facebook = claimString(ent.claims?.P2013);  // Facebook username
+    const imdb = claimString(ent.claims?.P345);       // IMDb ID
+  
+    const socials: WikidataProfile["socials"] = {
+      wikidata: wikidataLink,
+      ...(wikiTitle ? { wikipedia: undefined } : null),
+      ...(twitter ? { twitter: twitter.startsWith("@") ? twitter : `@${twitter}` } : null),
+      ...(instagram ? { instagram: instagram.startsWith("@") ? instagram : `@${instagram}` } : null),
+      ...(tiktok ? { tiktok: tiktok.startsWith("@") ? tiktok : `@${tiktok}` } : null),
+      ...(youtube ? { youtube } : null),
+      ...(facebook ? { facebook } : null),
+      ...(imdb ? { imdb: `https://www.imdb.com/name/${imdb}/` } : null),
+    };
+  
+    // Wikipedia extract is usually better bio; also gives us a canonical page URL
+    const wp = wikiTitle ? await wikipediaSummary(wikiTitle) : null;
+    if (wp?.pageUrl) socials.wikipedia = wp.pageUrl;
+  
+    const bio = wp?.extract || desc;
   
     return {
       qid: hit.qid,
@@ -214,7 +339,12 @@ export type WikidataProfile = {
       bio,
       dob: dobIso,
       age,
-      occupation,
+      occupations: occupations.length ? occupations : undefined,
+      nationality,
+      gender,
       relationship,
+      imageUrl,
+      officialWebsite,
+      socials,
     };
   }
