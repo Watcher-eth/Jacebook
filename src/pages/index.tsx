@@ -1,78 +1,78 @@
-import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { FacebookNavbar } from "@/components/layout/navbar"
+import { BioSection } from "@/components/profile/bio"
+import { CreatePost } from "@/components/profile/createPost"
+import { FriendsSection } from "@/components/profile/friends"
+import { ProfileHeader } from "@/components/profile/header"
+import { PostCard } from "@/components/profile/post"
+import { TimelineSection } from "@/components/profile/timeline"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export default function Home() {
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black`}
-    >
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the index.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+    <div className="min-h-screen bg-background font-sans">
+      <FacebookNavbar />
+      <ProfileHeader />
+
+      <div className="max-w-[1050px] mx-auto px-4 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
+          {/* Left Sidebar - Bio Section */}
+          <aside className="space-y-4">
+            <BioSection />
+            <FriendsSection />
+          </aside>
+
+          {/* Main Content - Timeline */}
+          <main className="space-y-4">
+            <CreatePost />
+            <PostCard
+              author="Alex Fitzpatrick"
+              timestamp="20 hrs"
+              content="All this talk of measles has...
+
+Gone viral"
+              likes={29}
+              likedBy={["Craig Kanalley", "Rubina Madan Fillion"]}
+              comments={[
+                {
+                  author: "Robert Potter",
+                  text: "Alex Fitzpatrick when you have your first kid I want to be there when you look into its eyes and say 'aw, you are such a little dick'",
+                  likes: 1,
+                  timestamp: "16 hrs",
+                },
+                {
+                  author: "Alex Fitzpatrick",
+                  text: "Robert I'm not planning on getting pregnant until at least after the wedding",
+                  likes: 2,
+                  timestamp: "16 hrs",
+                },
+                {
+                  author: "Ryan Teague Beckwith",
+                  text: "I'm actually wondering if this 'babies are dicks' thing isn't just a spectacular misunderstanding of the birds and the bees talk.",
+                  likes: 0,
+                  timestamp: "16 hrs",
+                },
+              ]}
+              totalComments={15}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs/pages/getting-started?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+            <PostCard
+              author="Alex Fitzpatrick"
+              timestamp="February 2 at 12:04pm"
+              content="Looking forward to the weekend!"
+              likes={15}
+              likedBy={["Sarah Johnson", "Mike Chen"]}
+              comments={[]}
+              totalComments={0}
+              
+            />
+          </main>
+
+          {/* Right Sidebar - Timeline Years */}
+          <aside className="hidden lg:block">
+            <TimelineSection />
+          </aside>
         </div>
-      </main>
+      </div>
     </div>
-  );
+  )
 }
