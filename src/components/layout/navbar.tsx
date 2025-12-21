@@ -2,6 +2,7 @@ import { Search, Users, MessageCircle, Bell, Menu } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { PeopleSearchPopover } from "./SearchPopover"
 
 export function FacebookNavbar() {
   return (
@@ -18,13 +19,8 @@ export function FacebookNavbar() {
               />
             </svg>
 
-            <div className="relative w-96 ml-3">
-              <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                placeholder="Search for people, places and things"
-                className="pl-2 h-7 bg-white rounded-md border-none text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-muted-foreground/50 text-sm"
-              />
-            </div>
+            <PeopleSearchPopover />
+
           </div>
 
           <div className="flex items-center gap-2 flex-1 justify-end">

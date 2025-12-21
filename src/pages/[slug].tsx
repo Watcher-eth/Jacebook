@@ -1,6 +1,7 @@
 // pages/people/[slug].tsx
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import React from "react";
 
 import { FacebookNavbar } from "@/components/layout/navbar";
 import { BioSection } from "@/components/profile/bio";
@@ -15,48 +16,72 @@ import {
   fileUrl,
   parseEftaId,
   type WorkerFile,
-  fetchPdfManifest,
-  thumbnailUrlForPdf,
   thumbnailKeyForPdf,
-  pageJpegUrlOrThumb,
 } from "@/lib/worker-client";
 
 import { NewsFeedPost } from "@/components/feed/post";
 import { buildFriendsForPerson, type FriendEdge } from "@/lib/friends-graph";
-import { fetchWikidataProfileByName, type WikidataProfile } from "@/lib/wikidata"
-import { AboutSection } from "@/components/profile/aboutSection"
-import { PhotoGrid } from "@/components/profile/photoGrid"
-import { FriendGrid } from "@/components/profile/friendGrid"
-import React from "react"
+import { fetchWikidataProfileByName, type WikidataProfile } from "@/lib/wikidata";
+import { AboutSection } from "@/components/profile/aboutSection";
+import { PhotoGrid } from "@/components/profile/photoGrid";
+import { FriendGrid } from "@/components/profile/friendGrid";
 
 type WithPerson = { name: string; slug: string };
+
+type PagePost = {
+  key: string;
+  url: string;
+  timestamp: string;
+  content: string;
+  authorAvatar: string;
+  imageUrl?: string;
+  withPeople?: WithPerson[];
+};
 
 type PageProps = {
   slug: string;
   name: string;
   count: number;
   years: string[];
-  wikidata?: WikidataProfile;
+  wikidata?: WikidataProfile | null;
+
   profileAvatarUrl: string;
   coverUrl: string;
+
   friends: FriendEdge[];
-  posts: Array<{
-    key: string;
-    url: string;
-    timestamp: string;
-    content: string;
-    authorAvatar: string;
-    imageUrl?: string;
-    withPeople?: WithPerson[];
-  }>;
 
+  posts: PagePost[];
+  nextCursor: string | null;
 };
 
-type Appearance = {
-  file: string;
-  page: number;
-  confidence?: number;
-};
+type Appearance = { file: string; page: number; confidence?: number };
+
+function now() {
+  return Date.now();
+}
+
+type CacheEntry<T> = { exp: number; v: T };
+function getCache<T>(m: Map<string, CacheEntry<T>>, k: string) {
+  const e = m.get(k);
+  if (e && e.exp > now()) return e.v;
+  return null;
+}
+function setCache<T>(m: Map<string, CacheEntry<T>>, k: string, v: T, ttlMs: number) {
+  m.set(k, { exp: now() + ttlMs, v });
+  return v;
+}
+
+const friendsCache = new Map<string, CacheEntry<FriendEdge[]>>();
+const wikidataCache = new Map<string, CacheEntry<WikidataProfile | null>>();
+const inflight = new Map<string, Promise<any>>();
+
+async function once<T>(key: string, fn: () => Promise<T>) {
+  const p = inflight.get(key);
+  if (p) return p as Promise<T>;
+  const q = fn().finally(() => inflight.delete(key));
+  inflight.set(key, q);
+  return q;
+}
 
 function formatTimestamp(iso: string) {
   const d = new Date(iso);
@@ -72,57 +97,6 @@ function yearFromIso(iso: string) {
 
 function unique<T>(arr: T[]) {
   return Array.from(new Set(arr));
-}
-
-function absWorkerUrl(workerUrl: string, u?: string | null) {
-  if (!u) return undefined;
-  const s = String(u).trim();
-  if (!s) return undefined;
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return `${workerUrl}${s}`;
-  return `${workerUrl}/${s}`;
-}
-
-type PdfManifest = Record<
-  string,
-  { thumbnailKey?: string; thumbKey?: string; thumb?: string; thumbnail?: string } | string
->;
-
-function thumbKeyFromManifest(manifest: PdfManifest | any, pdfKey: string) {
-  if (!manifest) return null;
-  const v = manifest[pdfKey];
-  if (!v) return null;
-  if (typeof v === "string") return v;
-  if (typeof v === "object") return v.thumbnailKey || v.thumbKey || v.thumb || v.thumbnail || null;
-  return null;
-}
-
-function ensureThumbPath(s: string | null) {
-  if (!s) return null;
-  const t = String(s).trim();
-  if (!t) return null;
-  if (t.startsWith("http://") || t.startsWith("https://")) {
-    try {
-      const u = new URL(t);
-      return u.pathname.replace(/^\//, "");
-    } catch {
-      return t;
-    }
-  }
-  return t.replace(/^\//, "");
-}
-
-function resolveThumbKey(pdfKey: string, manifest: any) {
-  const fromManifest = ensureThumbPath(thumbKeyFromManifest(manifest, pdfKey));
-  if (fromManifest) return fromManifest;
-  return ensureThumbPath(thumbnailKeyForPdf(pdfKey));
-}
-
-function resolveThumbUrl(workerUrl: string, pdfKey: string, manifest: any) {
-  const k = resolveThumbKey(pdfKey, manifest);
-  if (!k) return undefined;
-  if (!k.startsWith("thumbnails/")) return undefined;
-  return fileUrl(k);
 }
 
 function conf(a: Appearance) {
@@ -149,33 +123,34 @@ function pickTopAppearances(appearances: Appearance[], minConf: number, n: numbe
   return out;
 }
 
-function imageUrlForAppearance(args: { manifest: any | null; workerUrl: string; a: Appearance }) {
-  const { manifest, workerUrl, a } = args;
+// FAST: no manifest needed
+function pageJpegKeyFast(pdfKey: string, page: number) {
+  const base = pdfKey.replace(/\.pdf$/i, "");
+  const p = String(page).padStart(3, "0");
+  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
+}
 
-  if (manifest) return pageJpegUrlOrThumb(manifest, a.file, a.page);
-  return resolveThumbUrl(workerUrl, a.file, manifest) || fileUrl(thumbnailKeyForPdf(a.file));
+function pageJpegUrlFast(pdfKey: string, page: number) {
+  return fileUrl(pageJpegKeyFast(pdfKey, page));
 }
 
 function chooseBestPage(appearances: Appearance[]) {
   if (!appearances.length) return 1;
-  const best = appearances.reduce((best, cur) => {
+  let best = appearances[0]!;
+  for (const cur of appearances) {
     const cb = conf(best);
     const cc = conf(cur);
-    if (cc > cb) return cur;
-    if (cc === cb && cur.page < best.page) return cur;
-    return best;
-  }, appearances[0]);
+    if (cc > cb) best = cur;
+    else if (cc === cb && (cur.page ?? 1e9) < (best.page ?? 1e9)) best = cur;
+  }
   return best.page || 1;
 }
 
-// ---- co-occur helper (same file, pageWindow +/-) ----
 function buildPagePeopleIndex(args: {
   allCelebs: ReturnType<typeof getAllCelebrities>;
   keysSet: Set<string>;
 }) {
   const { allCelebs, keysSet } = args;
-
-  // file -> page -> Map<slug, maxConf>
   const byFile = new Map<string, Map<number, Map<string, number>>>();
 
   for (const c of allCelebs) {
@@ -220,7 +195,7 @@ function coPeopleForPost(args: {
   const pages = byFile.get(file);
   if (!pages) return [];
 
-  const agg = new Map<string, number>(); // otherSlug -> score (max conf or sum)
+  const agg = new Map<string, number>();
 
   for (let q = page - pageWindow; q <= page + pageWindow; q++) {
     const people = pages.get(q);
@@ -240,21 +215,21 @@ function coPeopleForPost(args: {
     .map(([s]) => ({ slug: s, name: slugToName.get(s) ?? s }));
 }
 
+const SSR_POST_LIMIT = 30; // lower = faster SSR + less image work
+const MIN_CONF = 99.7;
+
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
   const slug = String(ctx.params?.slug || "");
   const celeb = getCelebrityBySlug(slug);
-  
+
   if (!celeb) return { notFound: true };
 
-  const DEBUG = process.env.NODE_ENV === "development";
-  const workerUrl = process.env.NEXT_PUBLIC_WORKER_URL || "https://jacebook-worker.jacebook.workers.dev";
-
-  // Strict for THIS person page feed
-  const MIN_CONF = 99.7;
+  ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
   const hi = (celeb.appearances as Appearance[]).filter((a) => (a.confidence ?? 0) >= MIN_CONF);
-  const keys = unique(hi.map((a) => a.file));
-  if (!keys.length) {
+  const keysAll = unique(hi.map((a) => a.file));
+
+  if (!keysAll.length) {
     return {
       props: {
         slug,
@@ -265,72 +240,66 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         coverUrl: "",
         friends: [],
         posts: [],
+        nextCursor: null,
         wikidata: null,
       },
     };
   }
 
-  const [meta, manifest] = await Promise.all([filesByKeys(keys), fetchPdfManifest()]);
-
-  const metaByKey = new Map<string, WorkerFile>();
-  for (const m of meta) metaByKey.set(m.key, m);
-
+  // ---- Avatar/Cover (no worker calls) ----
   const top2 = pickTopAppearances(celeb.appearances as Appearance[], MIN_CONF, 2);
   const pfpA = top2[0] ?? null;
   const coverA = top2[1] ?? top2[0] ?? null;
 
-  const profileAvatarUrl = pfpA
-    ? imageUrlForAppearance({ manifest, workerUrl, a: pfpA })
-    : absWorkerUrl(workerUrl, thumbnailUrlForPdf(keys[0])) || "";
+  const fallbackThumb = fileUrl(thumbnailKeyForPdf(keysAll[0]!));
+  const profileAvatarUrl = pfpA ? pageJpegUrlFast(pfpA.file, pfpA.page) : fallbackThumb;
+  const coverUrl = coverA ? pageJpegUrlFast(coverA.file, coverA.page) : profileAvatarUrl;
 
-  const coverUrl = coverA ? imageUrlForAppearance({ manifest, workerUrl, a: coverA }) : profileAvatarUrl;
+  // ---- Sort docs cheaply BEFORE hitting worker ----
+  // Sorting by uploaded requires worker meta; EFTA id is a good proxy and free.
+  const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
 
-  const docs = keys
-    .map((key) => {
-      const m = metaByKey.get(key);
-      const appearancesInFile = hi.filter((a) => a.file === key);
-      const previewPage = chooseBestPage(appearancesInFile);
+  // SSR only first window; fetch meta ONLY for those
+  const ssrKeys = docsKeysSorted.slice(0, SSR_POST_LIMIT);
 
-      return {
-        key,
-        uploaded: m?.uploaded ?? null,
-        url: fileUrl(key),
-        efta: key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key,
-        appearancesInFile,
-        previewPage,
-      };
-    })
-    .sort((a, b) => {
-      const ta = a.uploaded ? new Date(a.uploaded).getTime() : 0;
-      const tb = b.uploaded ? new Date(b.uploaded).getTime() : 0;
-      if (ta !== tb) return tb - ta;
-      return parseEftaId(b.key) - parseEftaId(a.key);
-    });
+  const meta = await filesByKeys(ssrKeys, { ttlMs: 10 * 60_000 });
+  const metaByKey = new Map<string, WorkerFile>();
+  for (const m of meta) metaByKey.set(m.key, m);
 
+  // years: for now only from SSR window (fast). You can lazy-load full years later.
   const yearSet = new Set<string>();
-  for (const d of docs) {
-    if (!d.uploaded) continue;
-    const y = yearFromIso(d.uploaded);
+  for (const m of meta) {
+    const y = yearFromIso(m.uploaded);
     if (y) yearSet.add(y);
   }
   const years = ["Recent", ...Array.from(yearSet).sort((a, b) => Number(b) - Number(a))];
 
-  // ---- Friends graph ----
-  const allCelebs = getAllCelebrities();
-  const friends = buildFriendsForPerson({
-    ownerSlug: slug,
-    allCelebs,
-    minConf: MIN_CONF,
-    manifest,
-    minConfOwner: 99.3,
-    minConfOther: 99.0,
-    pageWindow: 1,
-    minEdgeWeight: 1,
-    limit: 48,
-  });
+  // ---- friends graph: memoize aggressively ----
+  const friends = await (async () => {
+    const cached = getCache(friendsCache, slug);
+    if (cached) return cached;
 
-  // ---- Build "WITH <NAME>" for each post ----
-  const keysSet = new Set(keys);
+    return once(`friends:${slug}`, async () => {
+      const allCelebs = getAllCelebrities();
+      const v = buildFriendsForPerson({
+        ownerSlug: slug,
+        allCelebs,
+        minConf: MIN_CONF,
+        manifest: null,
+        minConfOwner: 99.3,
+        minConfOther: 99.0,
+        pageWindow: 1,
+        minEdgeWeight: 1,
+        limit: 48,
+      });
+      return setCache(friendsCache, slug, v, 30 * 60_000); // 30 min
+    });
+  })();
+
+  // ---- "WITH people" index only for SSR keys ----
+  const allCelebs = getAllCelebrities();
+  const keysSet = new Set(ssrKeys);
+
   const slugToName = new Map<string, string>();
   for (const c of allCelebs) slugToName.set(slugifyName(c.name), c.name);
 
@@ -339,20 +308,25 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   const WITH_MIN_CONF = 98.8;
   const WITH_PAGE_WINDOW = 1;
 
-  const rawPosts = docs
-    .map((d) => {
-      const pages = d.appearancesInFile.map((a) => a.page).sort((x, y) => x - y);
+  const posts: PagePost[] = ssrKeys
+    .map((key) => {
+      const m = metaByKey.get(key);
+
+      const appearancesInFile = hi.filter((a) => a.file === key);
+      const previewPage = chooseBestPage(appearancesInFile);
+
+      const pages = appearancesInFile.map((a) => a.page).sort((x, y) => x - y);
       const shown = pages.slice(0, 8);
       const pageHint = shown.length ? `Pages: ${shown.join(", ")}${pages.length > shown.length ? "…" : ""}` : "";
 
-      const imageUrl = manifest
-      ? pageJpegUrlOrThumb(manifest, d.key, d.previewPage)
-      : fileUrl(thumbnailKeyForPdf(d.key));
+      const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
+
+      const imageUrl = pageJpegUrlFast(key, previewPage);
 
       const withPeople = coPeopleForPost({
         byFile,
-        file: d.key,
-        page: d.previewPage,
+        file: key,
+        page: previewPage,
         ownerSlug: slug,
         slugToName,
         minConfOther: WITH_MIN_CONF,
@@ -361,18 +335,30 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       });
 
       return {
-        key: d.key,
-        url: d.url,
-        timestamp: d.uploaded ? formatTimestamp(d.uploaded) : "Unknown date",
+        key,
+        url: fileUrl(key),
+        timestamp: m?.uploaded ? formatTimestamp(m.uploaded) : "Unknown date",
         authorAvatar: profileAvatarUrl,
-        content: `${d.efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${d.previewPage}`,
+        content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
         imageUrl,
         withPeople,
       };
     })
     .reverse();
 
-    const wd = await fetchWikidataProfileByName(celeb.name);
+  const nextCursor = docsKeysSorted.length > SSR_POST_LIMIT ? String(SSR_POST_LIMIT) : null;
+
+  // ---- Wikidata: memoize + tolerate failure ----
+  const wikidata = await (async () => {
+    const k = celeb.name;
+    const cached = getCache(wikidataCache, k);
+    if (cached !== null) return cached;
+
+    return once(`wikidata:${k}`, async () => {
+      const v = await fetchWikidataProfileByName(k).catch(() => null);
+      return setCache(wikidataCache, k, v, 24 * 60_000); // 24 min
+    });
+  })();
 
   return {
     props: {
@@ -383,55 +369,58 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       profileAvatarUrl,
       coverUrl,
       friends,
-      posts: rawPosts,
-      wikidata: wd,
+      posts,
+      nextCursor,
+      wikidata,
     },
   };
 };
 
 export default function PersonPage(props: InferGetServerSidePropsType<typeof getServerSideProps>) {
-    const { name, years, posts, count, profileAvatarUrl, coverUrl, friends } = props;
-  
-    const [tab, setTab] = React.useState<ProfileTab>("timeline");
-  
-    const photos = React.useMemo(() => {
-        return posts
-          .filter((p) => !!p.imageUrl)
-          .map((p) => ({
-            key: p.key,
-            imageUrl: p.imageUrl!,
-            href: p.url, // open PDF when clicked
-            label: p.content,
-          }));
-      }, [posts]);
-    return (
-      <div className="min-h-screen bg-background font-sans">
-        <Head>
-          <title>{`${name} • Jacebook`}</title>
-          <meta name="description" content={`Documents where ${name} appears (${count} total appearances)`} />
-        </Head>
-  
-        <FacebookNavbar />
-        <ProfileHeader
-          name={name}
-          verified={true}
-          coverUrl={coverUrl}
-          avatarUrl={profileAvatarUrl}
-          activeTab={tab}
-          onTabChange={setTab}
-        />
-  
-        <div className="max-w-[1050px] mx-auto px-4 py-5">
-          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
-            <aside className="space-y-4">
-              <BioSection wikidata={props.wikidata!} />
-              <FriendsSection friends={friends} />
-            </aside>
-  
-            <main className="space-y-4 min-w-[30vw]">
+  const { name, years, posts, count, profileAvatarUrl, coverUrl, friends } = props;
+  const [tab, setTab] = React.useState<ProfileTab>("timeline");
+
+  const photos = React.useMemo(() => {
+    return posts
+      .filter((p) => !!p.imageUrl)
+      .map((p) => ({
+        key: p.key,
+        imageUrl: p.imageUrl!,
+        href: p.url,
+        label: p.content,
+      }));
+  }, [posts]);
+
+  return (
+    <div className="min-h-screen bg-background font-sans">
+      <Head>
+        <title>{`${name} • Jacebook`}</title>
+        <meta name="description" content={`Documents where ${name} appears (${count} total appearances)`} />
+      </Head>
+
+      <FacebookNavbar />
+
+      <ProfileHeader
+        name={name}
+        verified={true}
+        coverUrl={coverUrl}
+        avatarUrl={profileAvatarUrl}
+        activeTab={tab}
+        onTabChange={setTab}
+      />
+
+      <div className="max-w-[1050px] mx-auto px-4 py-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
+          <aside className="space-y-4">
+            <BioSection wikidata={props.wikidata!} />
+            <FriendsSection friends={friends} />
+          </aside>
+
+          <main className="space-y-4 min-w-[30vw]">
             {tab === "timeline" && (
               <>
                 <CreatePost />
+
                 {posts.map((p) => (
                   <div key={p.key}>
                     <NewsFeedPost
@@ -444,12 +433,17 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
                     />
                   </div>
                 ))}
+
+                {props.nextCursor ? (
+                  <div className="text-center text-sm text-muted-foreground py-4">
+                    Showing {posts.length} posts • load more coming next
+                  </div>
+                ) : null}
               </>
             )}
 
             {tab === "about" && (
               <div className="space-y-4">
-                {/* reuse your existing BioSection styling, but in the main column */}
                 <AboutSection wikidata={props.wikidata!} />
               </div>
             )}
@@ -458,12 +452,12 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
 
             {tab === "photos" && <PhotoGrid photos={photos} />}
           </main>
-  
-            <aside className="hidden lg:block">
-              <TimelineSection years={years} />
-            </aside>
-          </div>
+
+          <aside className="hidden lg:block">
+            <TimelineSection years={years} />
+          </aside>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}

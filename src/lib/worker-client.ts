@@ -8,141 +8,175 @@ export function getWorkerUrl() {
   return WORKER_URL.replace(/\/+$/, "");
 }
 
-
-// src/lib/worker-client.ts
 export function isImageKey(key: string) {
-    return /\.(jpe?g|png|webp|gif)$/i.test(key);
-  }
-  
-  export function isPdfKey(key: string) {
-    return /\.pdf$/i.test(key);
-  }
-  
-  const ASSET_V = process.env.NEXT_PUBLIC_ASSET_V || "20251221"; // bump when needed
+  return /\.(jpe?g|png|webp|gif)$/i.test(key);
+}
 
-  export function fileUrl(key: string) {
-    const clean = key.replace(/^\/+/, "");
-    return `${getWorkerUrl()}/${clean}?v=${ASSET_V}`;
-  }
-  
-  export function thumbnailKeyForPdf(pdfKey: string) {
-    return `thumbnails/${pdfKey.replace(/\.pdf$/i, ".jpg")}`;
-  }
-  
-  export function thumbnailUrl(key: string) {
-    // If it's already an image key, serve it directly (no thumbnails/ prefix)
-    if (isImageKey(key)) return fileUrl(key);
-  
-    // If it's a PDF key, use the derived thumbnail key
-    if (isPdfKey(key)) return fileUrl(thumbnailKeyForPdf(key));
-  
-    // Otherwise just serve direct
-    return fileUrl(key);
-  }
+export function isPdfKey(key: string) {
+  return /\.pdf$/i.test(key);
+}
 
+const ASSET_V = process.env.NEXT_PUBLIC_ASSET_V || "20251221";
+
+export function fileUrl(key: string) {
+  const clean = key.replace(/^\/+/, "");
+  return `${getWorkerUrl()}/${clean}?v=${ASSET_V}`;
+}
+
+export function thumbnailKeyForPdf(pdfKey: string) {
+  return `thumbnails/${pdfKey.replace(/\.pdf$/i, ".jpg")}`;
+}
 
 export function thumbnailUrlForPdf(pdfKey: string) {
   return `${getWorkerUrl()}/${thumbnailKeyForPdf(pdfKey)}`;
 }
 
-export async function filesByKeys(keys: string[]) {
+export function thumbnailUrl(key: string) {
+  if (isImageKey(key)) return fileUrl(key);
+  if (isPdfKey(key)) return fileUrl(thumbnailKeyForPdf(key));
+  return fileUrl(key);
+}
+
+// ---------- FAST in-process fetch cache (SSR) ----------
+
+type CacheEntry<T> = { exp: number; v: T };
+const jsonCache = new Map<string, CacheEntry<any>>();
+const inflight = new Map<string, Promise<any>>();
+
+function now() {
+  return Date.now();
+}
+
+function stableKey(url: string, body?: unknown) {
+  return body ? `${url}::${JSON.stringify(body)}` : url;
+}
+
+async function fetchJsonCached<T>(args: {
+  url: string;
+  init?: RequestInit;
+  bodyKey?: unknown;
+  ttlMs: number;
+}): Promise<T> {
+  const k = stableKey(args.url, args.bodyKey);
+  const hit = jsonCache.get(k);
+  const t = now();
+  if (hit && hit.exp > t) return hit.v as T;
+
+  const inF = inflight.get(k);
+  if (inF) return inF as Promise<T>;
+
+  const p = (async () => {
+    const res = await fetch(args.url, args.init);
+    if (!res.ok) throw new Error(`Fetch failed ${res.status} for ${args.url}`);
+    const v = (await res.json()) as T;
+    jsonCache.set(k, { exp: t + args.ttlMs, v });
+    return v;
+  })().finally(() => inflight.delete(k));
+
+  inflight.set(k, p);
+  return p;
+}
+
+export async function filesByKeys(keys: string[], opts?: { ttlMs?: number }) {
   if (!keys.length) return [];
-  const res = await fetch(`${getWorkerUrl()}/api/files-by-keys`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ keys }),
+  const url = `${getWorkerUrl()}/api/files-by-keys`;
+
+  // important: keys order changes cache key; sort for stable caching
+  const stableKeys = [...keys].sort();
+
+  const ttlMs = opts?.ttlMs ?? 5 * 60_000; // 5 min
+  const json = await fetchJsonCached<{ files: WorkerFile[] }>({
+    url,
+    ttlMs,
+    bodyKey: stableKeys,
+    init: {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ keys: stableKeys }),
+    },
   });
-  if (!res.ok) throw new Error(`Worker /api/files-by-keys failed: ${res.status}`);
-  const json = (await res.json()) as { files: WorkerFile[] };
+
   return json.files;
 }
 
 // ---- manifest (optional) ----
+export interface PdfManifestEntry {
+  pages: number;
+}
+export type PdfManifest = Record<string, PdfManifestEntry>;
 
-export type PdfManifest = any;
-
-export async function fetchPdfManifest(): Promise<PdfManifest | null> {
-  const res = await fetch(`${getWorkerUrl()}/api/pdf-manifest`, {
-    headers: { Accept: "application/json" },
-  });
-  if (!res.ok) return null;
-  return res.json();
+export async function fetchPdfManifest(opts?: { ttlMs?: number }): Promise<PdfManifest | null> {
+  const url = `${getWorkerUrl()}/api/pdf-manifest`;
+  const ttlMs = opts?.ttlMs ?? 30 * 60_000; // 30 min
+  try {
+    return await fetchJsonCached<PdfManifest>({ url, ttlMs });
+  } catch {
+    return null;
+  }
 }
 
 function isString(x: any): x is string {
   return typeof x === "string";
 }
-  /**
-   * Best-effort resolver for common manifest shapes.
-   * Returns an R2 key (NOT full URL) or null.
-   */
-  export function resolvePageJpegKey(manifest: PdfManifest, pdfKey: string, page: number): string | null {
-    if (!manifest) return null;
-  
-    const direct = (manifest as any)?.[pdfKey];
-    if (!direct) return null;
-  
-    // ✅ Your manifest shape: { pages: number }
-    // Derive: pdfs-as-jpegs/<pdfKey-without-.pdf>/page-XYZ.jpg
-    const n = (direct as any)?.pages;
-    if (typeof n === "number" && n > 0) {
-      if (page < 1 || page > n) return null;
-      const base = pdfKey.replace(/\.pdf$/i, "");
-      const p = String(page).padStart(3, "0");
-      return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
-    }
-  
-    // Shape A: manifest[pdfKey][page] or manifest[pdfKey].pages[page]
-    const a = (direct as any)?.[page];
-    if (isString(a)) return a;
-  
-    const b = (direct as any)?.pages?.[page];
-    if (isString(b)) return b;
-  
-    const c = (direct as any)?.pages?.[String(page)];
-    if (isString(c)) return c;
-  
-    // Shape B: manifest[pdfKey].pages is array of strings or objects
-    if (Array.isArray((direct as any)?.pages)) {
-      const entry = (direct as any).pages[page - 1];
-      if (isString(entry)) return entry;
-  
-      const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
-      if (isString(key)) return key;
-    }
-  
-    // Shape C: manifest.items = [{ pdfKey, pages: [...] }]
-    if (Array.isArray((manifest as any)?.items)) {
-      const item = (manifest as any).items.find(
-        (x: any) => x?.pdfKey === pdfKey || x?.pdf === pdfKey || x?.key === pdfKey
-      );
-  
-      if (item) {
-        const pages = item.pages;
-  
-        if (Array.isArray(pages)) {
-          const entry = pages[page - 1];
-          if (isString(entry)) return entry;
-  
-          const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
-          if (isString(key)) return key;
-        }
-  
-        const maybe = item?.pages?.[page] || item?.pages?.[String(page)];
-        if (isString(maybe)) return maybe;
-      }
-    }
-  
-    return null;
-  }
-  
-  export function pageJpegUrlOrThumb(manifest: PdfManifest | null, pdfKey: string, page: number) {
-    const jpgKey = manifest ? resolvePageJpegKey(manifest, pdfKey, page) : null;
-    if (jpgKey) return fileUrl(jpgKey); // ✅ adds ?v=...
-    return thumbnailUrlForPdf(pdfKey);
+
+export function resolvePageJpegKey(manifest: PdfManifest, pdfKey: string, page: number): string | null {
+  if (!manifest) return null;
+  const direct = (manifest as any)?.[pdfKey];
+  if (!direct) return null;
+
+  const n = (direct as any)?.pages;
+  if (typeof n === "number" && n > 0) {
+    if (page < 1 || page > n) return null;
+    const base = pdfKey.replace(/\.pdf$/i, "");
+    const p = String(page).padStart(3, "0");
+    return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
   }
 
-  export function parseEftaId(key: string) {
-    const m = key.match(/EFTA(\d+)\.pdf$/i);
-    return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+  const a = (direct as any)?.[page];
+  if (isString(a)) return a;
+
+  const b = (direct as any)?.pages?.[page];
+  if (isString(b)) return b;
+
+  const c = (direct as any)?.pages?.[String(page)];
+  if (isString(c)) return c;
+
+  if (Array.isArray((direct as any)?.pages)) {
+    const entry = (direct as any).pages[page - 1];
+    if (isString(entry)) return entry;
+    const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
+    if (isString(key)) return key;
   }
+
+  if (Array.isArray((manifest as any)?.items)) {
+    const item = (manifest as any).items.find(
+      (x: any) => x?.pdfKey === pdfKey || x?.pdf === pdfKey || x?.key === pdfKey
+    );
+
+    if (item) {
+      const pages = item.pages;
+      if (Array.isArray(pages)) {
+        const entry = pages[page - 1];
+        if (isString(entry)) return entry;
+        const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
+        if (isString(key)) return key;
+      }
+
+      const maybe = item?.pages?.[page] || item?.pages?.[String(page)];
+      if (isString(maybe)) return maybe;
+    }
+  }
+
+  return null;
+}
+
+export function pageJpegUrlOrThumb(manifest: PdfManifest | null, pdfKey: string, page: number) {
+  const jpgKey = manifest ? resolvePageJpegKey(manifest, pdfKey, page) : null;
+  if (jpgKey) return fileUrl(jpgKey);
+  return thumbnailUrlForPdf(pdfKey);
+}
+
+export function parseEftaId(key: string) {
+  const m = key.match(/EFTA(\d+)\.pdf$/i);
+  return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+}

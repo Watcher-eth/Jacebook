@@ -1,5 +1,6 @@
 // src/lib/people.ts
 import { CELEBRITY_DATA, type Celebrity } from "@/lib/celebrity-data";
+import { fileUrl } from "@/lib/worker-client";
 
 export function slugifyName(name: string) {
   return name
@@ -10,40 +11,83 @@ export function slugifyName(name: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function getCelebrityBySlug(slug: string): Celebrity | null {
-  return CELEBRITY_DATA.find((c) => slugifyName(c.name) === slug) ?? null;
+type Appearance = { file: string; page: number; confidence?: number };
+
+function conf(a: Appearance) {
+  return typeof a.confidence === "number" ? a.confidence : 0;
 }
 
-/**
- * For friend-graph + cross-person operations.
- * Always prefer this over importing CELEBRITY_DATA directly elsewhere.
- */
+function pickTopAppearance(appearances: Appearance[], minConf: number) {
+  let best: Appearance | null = null;
+  for (const a of appearances || []) {
+    if (!a?.file || !a?.page) continue;
+    if (conf(a) < minConf) continue;
+    if (!best) best = a;
+    else if (conf(a) > conf(best)) best = a;
+    else if (conf(a) === conf(best) && (a.page ?? 1e9) < (best.page ?? 1e9)) best = a;
+  }
+  return best;
+}
+
+// FAST: no manifest needed
+function pageJpegKeyFast(pdfKey: string, page: number) {
+  const base = pdfKey.replace(/\.pdf$/i, "");
+  const p = String(page).padStart(3, "0");
+  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
+}
+function pageJpegUrlFast(pdfKey: string, page: number) {
+  return fileUrl(pageJpegKeyFast(pdfKey, page));
+}
+
+// ----- precomputed indexes (module init) -----
+
+const CELEB_BY_SLUG = new Map<string, Celebrity>();
+const SEARCH_INDEX: Array<{ slug: string; name: string; nameNorm: string }> = [];
+const AVATAR_PICK = new Map<string, { file: string; page: number }>();
+
+const DEFAULT_MIN_CONF = 99.7;
+
+for (const c of CELEBRITY_DATA) {
+  const slug = slugifyName(c.name);
+  CELEB_BY_SLUG.set(slug, c);
+
+  const name = c.name || "";
+  SEARCH_INDEX.push({ slug, name, nameNorm: name.toLowerCase().trim() });
+
+  const top = pickTopAppearance((c.appearances as any as Appearance[]) || [], DEFAULT_MIN_CONF);
+  if (top) AVATAR_PICK.set(slug, { file: top.file, page: top.page });
+}
+
+export function getCelebrityBySlug(slug: string): Celebrity | null {
+  return CELEB_BY_SLUG.get(slug) ?? null;
+}
+
 export function getAllCelebrities(): Celebrity[] {
   return CELEBRITY_DATA;
 }
 
-// lib/avatarPlaceholder.ts
-export function avatarPlaceholderDataUri(label: string, size = 90) {
-    const text = (label || "?")
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((s) => s[0]!.toUpperCase())
-      .join("");
-  
-    const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#262626"/>
-          <stop offset="1" stop-color="#343434"/>
-        </linearGradient>
-      </defs>
-      <rect width="100%" height="100%" rx="${Math.floor(size / 2)}" fill="url(#g)"/>
-      <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
-            font-family="ui-sans-serif, system-ui" font-size="${Math.floor(size * 0.38)}"
-            fill="#F9F9F9">${text || "?"}</text>
-    </svg>`.trim();
-  
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+// For navbar / search results (instant, no manifest)
+export function getAvatarUrlForSlug(slug: string) {
+  const pick = AVATAR_PICK.get(slug);
+  if (!pick) return null;
+  return pageJpegUrlFast(pick.file, pick.page);
+}
+
+// Useful for fast search popover without touching huge objects
+export function searchCelebs(q: string, limit = 8) {
+  const query = (q || "").toLowerCase().trim();
+  if (!query) return [];
+
+  const scored: Array<{ slug: string; name: string; score: number }> = [];
+  for (const it of SEARCH_INDEX) {
+    const n = it.nameNorm;
+    let score = 0;
+    if (n === query) score = 100;
+    else if (n.startsWith(query)) score = 80;
+    else if (n.includes(query)) score = 50;
+    if (score > 0) scored.push({ slug: it.slug, name: it.name, score });
   }
+
+  scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  return scored.slice(0, limit);
+}
