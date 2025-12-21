@@ -3,6 +3,7 @@ import { MoreHorizontal, Globe, Camera } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { avatarPlaceholderDataUri } from "@/lib/people"
+import React from "react"
 
 type WithPerson = { name: string; slug: string };
 
@@ -23,19 +24,70 @@ function initialsFromName(name: string) {
   return (a + b).toUpperCase();
 }
 
-export function NewsFeedPost({ imageUrl, withPeople, ...props }: NewsFeedPostProps) {
-  const fallback = avatarPlaceholderDataUri(props.author, 64);
-  const src = imageUrl ?? fallback;
+export function NewsFeedPost({
+  imageUrl,
+  hqImageUrl,
+  priorityImage,
+  withPeople,
+  ...props
+}: {
+  author: string;
+  authorAvatar?: string;
+  timestamp: string;
+  content: string;
+  imageUrl?: string | null;     // thumb
+  hqImageUrl?: string | null;   // HQ
+  priorityImage?: boolean;
+  imageAlt?: string;
+  withPeople?: WithPerson[];
+}) {
+  const ref = React.useRef<HTMLDivElement | null>(null);
+  const [src, setSrc] = React.useState(imageUrl || "");
+  const [didUpgrade, setDidUpgrade] = React.useState(false);
+
+  // keep src in sync if navigating
+  React.useEffect(() => {
+    setSrc(imageUrl || "");
+    setDidUpgrade(false);
+  }, [imageUrl, hqImageUrl]);
+
+  React.useEffect(() => {
+    if (!hqImageUrl || didUpgrade) return;
+
+    // first post: upgrade immediately
+    if (priorityImage) {
+      setSrc(hqImageUrl);
+      setDidUpgrade(true);
+      return;
+    }
+
+    const el = ref.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        const e = entries[0];
+        if (!e?.isIntersecting) return;
+        setSrc(hqImageUrl);
+        setDidUpgrade(true);
+        io.disconnect();
+      },
+      { root: null, rootMargin: "600px 0px", threshold: 0.01 } // start loading before visible
+    );
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hqImageUrl, didUpgrade, priorityImage]);
 
   return (
     <div className="rounded-lg">
       <div className="p-3 pb-0 bg-white rounded-lg">
         <div className="flex items-start justify-between mb-2">
           <div className="flex gap-2 items-center">
-            <Avatar className="h-12 w-12 rounded-sm">
+             <Avatar className="h-12 w-12 rounded-sm">
               <AvatarImage className="rounded-sm object-cover" src={props.authorAvatar || "/placeholder.svg"} />
-              <AvatarFallback className="rounded-sm">{initialsFromName(props.author)}</AvatarFallback>
-            </Avatar>
+              {props.authorAvatar ? <AvatarFallback className="rounded-sm">{initialsFromName(props.author)}</AvatarFallback> : null}
+            </Avatar> 
 
             <div className="min-w-0">
               <p className="font-semibold text-sm text-primary hover:underline cursor-pointer">
@@ -77,20 +129,15 @@ export function NewsFeedPost({ imageUrl, withPeople, ...props }: NewsFeedPostPro
   
 
         <div className="mb-0">
-          <img
-            src={src}
-            alt={props.imageAlt || ""}
-            className="w-full"
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              console.log("[img ok]", img.src, img.naturalWidth, img.naturalHeight);
-            }}
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              console.error("[img fail]", { src: img.src, currentSrc: img.currentSrc });
-            }}
-          />
-        </div>
+        <img
+          src={src}
+          alt={props.imageAlt || ""}
+          className="w-full"
+          loading={priorityImage ? "eager" : "lazy"}
+          decoding="async"
+          fetchPriority={priorityImage ? "high" : "auto"}
+        />
+      </div>
 
         <div className="flex gap-2 items-center mt-1.5 -mb-1.5">
           <div className="h-7 text-xs text-primary hover:text-foreground">Like</div>

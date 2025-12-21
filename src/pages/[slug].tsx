@@ -22,14 +22,15 @@ import type { WikidataProfile } from "@/lib/wikidata";
 type WithPerson = { name: string; slug: string };
 
 type PagePost = {
-  key: string;
-  url: string;
-  timestamp: string;
-  content: string;
-  authorAvatar: string;
-  imageUrl?: string;
-  withPeople?: WithPerson[];
-};
+    key: string;
+    url: string;
+    timestamp: string;
+    content: string;
+    authorAvatar: string;
+    imageUrl?: string;    
+    hqImageUrl?: string; 
+    withPeople?: WithPerson[];
+  };
 
 type FriendEdge = {
   slug: string;
@@ -207,13 +208,18 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
 
       const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
 
+      const thumbUrl = fileUrl(thumbnailKeyForPdf(key));
+const hqUrl = pageJpegUrlFast(key, previewPage);
+
       return {
         key,
         url: fileUrl(key),
         timestamp: FIXED_TIMESTAMP,
         authorAvatar: profileAvatarUrl,
         content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
-        imageUrl: pageJpegUrlFast(key, previewPage),
+        imageUrl: thumbUrl,      
+        hqImageUrl: hqUrl,        
+      
       };
     })
     .reverse();
@@ -287,7 +293,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
         name={name}
         verified={true}
         coverUrl={coverUrl}
-        avatarUrl={profileAvatarUrl}
+        avatarUrl={wdRes?.data?.wikidata?.imageUrl ?? profileAvatarUrl}
         activeTab={tab}
         onTabChange={setTab}
       />
@@ -305,14 +311,15 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
                 <CreatePost />
                 {postsHydrated.map((p, i) => (
                   <div key={p.key}>
-                    <NewsFeedPost
-                      author={name}
-                      authorAvatar={p.authorAvatar}
-                      timestamp={p.timestamp}
-                      content={p.content}
-                      imageUrl={p.imageUrl}
-                      withPeople={p.withPeople}
-                      priorityImage={i === 0}
+                   <NewsFeedPost
+                    author={name}
+                    authorAvatar={wdRes?.data?.wikidata?.imageUrl!}
+                    timestamp={p.timestamp}
+                    content={p.content}
+                    imageUrl={p.imageUrl}      
+                    hqImageUrl={p.hqImageUrl}  
+                    withPeople={p.withPeople}
+                    priorityImage={i === 0}
                     />
                   </div>
                 ))}

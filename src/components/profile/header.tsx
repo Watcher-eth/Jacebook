@@ -90,9 +90,9 @@ export function ProfileHeader(props: {
       <div className="max-w-[1050px] mx-auto px-4 -mt-30">
         <div className="flex items-end gap-4">
           <div className="border border-gray-100 rounded-md relative -top-3">
-          <Avatar className="h-[160px] w-[160px] border-5  border-card rounded-md flex-shrink-0">
-            <AvatarImage src={avatarUrl} className="rounded-md object-cover" />
-            <AvatarFallback className="text-5xl rounded-md">{initials || "?"}</AvatarFallback>
+          <Avatar className="h-[160px] w-[160px] border-5 bg-white  border-card rounded-md flex-shrink-0">
+          {avatarUrl ?  <AvatarImage src={avatarUrl} className="rounded-md object-cover" />:
+            <AvatarFallback className="text-5xl rounded-md">{initials || "?"}</AvatarFallback>}
           </Avatar>
           </div>
           <div className="flex items-center gap-1 border-b border-border flex-1 pb-0">

@@ -180,3 +180,17 @@ export function parseEftaId(key: string) {
   const m = key.match(/EFTA(\d+)\.pdf$/i);
   return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
 }
+
+export function pageJpegKeyFast(pdfKey: string, page: number) {
+    const base = pdfKey.replace(/\.pdf$/i, "");
+    const p = String(page).padStart(3, "0");
+    return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
+  }
+  
+  export function pageJpegUrlFast(pdfKey: string, page: number) {
+    return fileUrl(pageJpegKeyFast(pdfKey, page));
+  }
+  
+  export function thumbUrlForPdf(pdfKey: string) {
+    return fileUrl(thumbnailKeyForPdf(pdfKey));
+  }
