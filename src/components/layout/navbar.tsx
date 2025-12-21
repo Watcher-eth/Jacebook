@@ -30,7 +30,7 @@ export function FacebookNavbar() {
           <div className="flex items-center gap-2 flex-1 justify-end">
             <div className="hidden md:flex items-center gap-1.5 text-sm font-medium">
               <Avatar className="h-5 w-5">
-                <AvatarImage className="object-cover" src="https://media-cldnry.s-nbcnews.com/image/upload/t_fit-560w,f_auto,q_auto:best/rockcms/2025-07/250709-epstein-ch-1250-e35033.jpg" />
+                <AvatarImage className="object-cover" src="https://jacebook-worker.jacebook.workers.dev/thumbnails/VOL00002/IMAGES/0001/EFTA00003324.jpg?v=20251221" />
                 <AvatarFallback className="text-xs">J</AvatarFallback>
               </Avatar>
               <span className="text-sm">Jeffrey</span>

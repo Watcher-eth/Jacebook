@@ -14,6 +14,14 @@ export function getCelebrityBySlug(slug: string): Celebrity | null {
   return CELEBRITY_DATA.find((c) => slugifyName(c.name) === slug) ?? null;
 }
 
+/**
+ * For friend-graph + cross-person operations.
+ * Always prefer this over importing CELEBRITY_DATA directly elsewhere.
+ */
+export function getAllCelebrities(): Celebrity[] {
+  return CELEBRITY_DATA;
+}
+
 // lib/avatarPlaceholder.ts
 export function avatarPlaceholderDataUri(label: string, size = 90) {
     const text = (label || "?")

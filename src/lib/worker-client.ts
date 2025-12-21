@@ -119,10 +119,10 @@ export function resolvePageJpegKey(manifest: PdfManifest, pdfKey: string, page: 
 }
 
 export function pageJpegUrlOrThumb(manifest: PdfManifest | null, pdfKey: string, page: number) {
-  const jpgKey = resolvePageJpegKey(manifest, pdfKey, page);
-  if (jpgKey) return `${getWorkerUrl()}/${jpgKey}`;
-  return thumbnailUrlForPdf(pdfKey);
-}
+    const jpgKey = resolvePageJpegKey(manifest, pdfKey, page);
+    if (jpgKey) return fileUrl(jpgKey); 
+    return fileUrl(thumbnailKeyForPdf(pdfKey));
+  }
 
 export function parseEftaId(key: string) {
   const m = key.match(/EFTA(\d+)\.pdf$/i);

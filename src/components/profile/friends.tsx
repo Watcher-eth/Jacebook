@@ -1,41 +1,51 @@
-import { Card } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+// components/profile/friends.tsx
+"use client";
 
-const friends = [
-  { name: "Ashley Ross", initials: "AR" },
-  { name: "Vaughn Wallace", initials: "VW" },
-  { name: "Alexandra Sifferlin", initials: "AS" },
-  { name: "Charlotte Alter", initials: "CA" },
-  { name: "Laura Stampler", initials: "LS" },
-  { name: "Kelly Conniff", initials: "KC" },
-  { name: "Amy Lombard", initials: "AL" },
-  { name: "Sam Frizell", initials: "SF" },
-  { name: "Nick Carbone", initials: "NC" },
-]
+import Link from "next/link";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FriendEdge } from "@/lib/friends-graph"
 
-export function FriendsSection() {
+function initialsFromName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] ?? "?";
+  const b = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : "";
+  return (a + b).toUpperCase();
+}
+
+export function FriendsSection({ friends }: { friends: FriendEdge[] }) {
+  const count = friends.length;
+
   return (
     <Card className="p-4">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between -mb-4">
         <h2 className="font-bold text-foreground">
           FRIENDS
-          <span className="text-muted-foreground font-normal text-sm ml-2">· 803 (9 Mutual)</span>
+          <span className="text-muted-foreground font-normal text-sm ml-2">· {count}</span>
         </h2>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        {friends.map((friend) => (
-          <div key={friend.name} className="relative group cursor-pointer">
-            <Avatar className="h-[90px] w-full rounded-md">
-              <AvatarImage className="rounded-md" src={``} />
-              <AvatarFallback className="rounded-md">{friend.initials}</AvatarFallback>
-            </Avatar>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
-              <p className="text-white text-xs font-semibold leading-tight">{friend.name}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {count === 0 ? (
+        <div className="text-sm text-muted-foreground">No friends yet.</div>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {friends.map((f) => (
+            <Link key={f.slug} href={`/${f.slug}`} className="relative group cursor-pointer">
+              <Avatar className="h-[90px] w-full rounded-md">
+                <AvatarImage className="rounded-md object-cover" src={f.avatarUrl || ""} />
+                <AvatarFallback className="rounded-md">{initialsFromName(f.name)}</AvatarFallback>
+              </Avatar>
+
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
+                <p className="text-white text-xs font-semibold leading-tight line-clamp-2">
+                  {f.name}
+                  <span className="ml-1 text-white/70 font-normal">· {f.weight}</span>
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </Card>
-  )
+  );
 }
