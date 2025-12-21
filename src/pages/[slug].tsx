@@ -10,7 +10,7 @@ import { FriendsSection } from "@/components/profile/friends";
 import { ProfileHeader, ProfileTab } from "@/components/profile/header";
 import { TimelineSection } from "@/components/profile/timeline";
 
-import { getCelebrityBySlug, getAllCelebrities, slugifyName } from "@/lib/people";
+import { getCelebrityBySlug } from "@/lib/people";
 import {
   filesByKeys,
   fileUrl,
@@ -20,7 +20,6 @@ import {
 } from "@/lib/worker-client";
 
 import { NewsFeedPost } from "@/components/feed/post";
-import { buildFriendsForPerson, type FriendEdge } from "@/lib/friends-graph";
 import { fetchWikidataProfileByName, type WikidataProfile } from "@/lib/wikidata";
 import { AboutSection } from "@/components/profile/aboutSection";
 import { PhotoGrid } from "@/components/profile/photoGrid";
@@ -35,7 +34,14 @@ type PagePost = {
   content: string;
   authorAvatar: string;
   imageUrl?: string;
-  withPeople?: WithPerson[];
+  withPeople?: WithPerson[]; // hydrated client-side
+};
+
+type FriendEdge = {
+  slug: string;
+  name: string;
+  weight: number;
+  avatarUrl?: string;
 };
 
 type PageProps = {
@@ -48,8 +54,7 @@ type PageProps = {
   profileAvatarUrl: string;
   coverUrl: string;
 
-  friends: FriendEdge[];
-
+  // friends moved off SSR
   posts: PagePost[];
   nextCursor: string | null;
 };
@@ -71,7 +76,6 @@ function setCache<T>(m: Map<string, CacheEntry<T>>, k: string, v: T, ttlMs: numb
   return v;
 }
 
-const friendsCache = new Map<string, CacheEntry<FriendEdge[]>>();
 const wikidataCache = new Map<string, CacheEntry<WikidataProfile | null>>();
 const inflight = new Map<string, Promise<any>>();
 
@@ -129,7 +133,6 @@ function pageJpegKeyFast(pdfKey: string, page: number) {
   const p = String(page).padStart(3, "0");
   return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
 }
-
 function pageJpegUrlFast(pdfKey: string, page: number) {
   return fileUrl(pageJpegKeyFast(pdfKey, page));
 }
@@ -146,76 +149,7 @@ function chooseBestPage(appearances: Appearance[]) {
   return best.page || 1;
 }
 
-function buildPagePeopleIndex(args: {
-  allCelebs: ReturnType<typeof getAllCelebrities>;
-  keysSet: Set<string>;
-}) {
-  const { allCelebs, keysSet } = args;
-  const byFile = new Map<string, Map<number, Map<string, number>>>();
-
-  for (const c of allCelebs) {
-    const slug = slugifyName(c.name);
-    for (const a of (c.appearances as any as Appearance[]) || []) {
-      if (!a?.file || !a?.page) continue;
-      if (!keysSet.has(a.file)) continue;
-
-      let pages = byFile.get(a.file);
-      if (!pages) {
-        pages = new Map();
-        byFile.set(a.file, pages);
-      }
-
-      let people = pages.get(a.page);
-      if (!people) {
-        people = new Map();
-        pages.set(a.page, people);
-      }
-
-      const prev = people.get(slug) ?? 0;
-      const next = conf(a);
-      if (next > prev) people.set(slug, next);
-    }
-  }
-
-  return byFile;
-}
-
-function coPeopleForPost(args: {
-  byFile: Map<string, Map<number, Map<string, number>>>;
-  file: string;
-  page: number;
-  ownerSlug: string;
-  slugToName: Map<string, string>;
-  minConfOther: number;
-  pageWindow: number;
-  maxPeople: number;
-}): WithPerson[] {
-  const { byFile, file, page, ownerSlug, slugToName, minConfOther, pageWindow, maxPeople } = args;
-
-  const pages = byFile.get(file);
-  if (!pages) return [];
-
-  const agg = new Map<string, number>();
-
-  for (let q = page - pageWindow; q <= page + pageWindow; q++) {
-    const people = pages.get(q);
-    if (!people) continue;
-
-    for (const [otherSlug, otherConf] of people.entries()) {
-      if (otherSlug === ownerSlug) continue;
-      if (otherConf < minConfOther) continue;
-      const prev = agg.get(otherSlug) ?? 0;
-      if (otherConf > prev) agg.set(otherSlug, otherConf);
-    }
-  }
-
-  return Array.from(agg.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxPeople)
-    .map(([s]) => ({ slug: s, name: slugToName.get(s) ?? s }));
-}
-
-const SSR_POST_LIMIT = 30; // lower = faster SSR + less image work
+const SSR_POST_LIMIT = 30;
 const MIN_CONF = 99.7;
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
@@ -224,6 +158,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
 
   if (!celeb) return { notFound: true };
 
+  // Let CDN cache the HTML.
   ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
   const hi = (celeb.appearances as Appearance[]).filter((a) => (a.confidence ?? 0) >= MIN_CONF);
@@ -238,7 +173,6 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
         years: ["Recent"],
         profileAvatarUrl: "",
         coverUrl: "",
-        friends: [],
         posts: [],
         nextCursor: null,
         wikidata: null,
@@ -255,58 +189,22 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   const profileAvatarUrl = pfpA ? pageJpegUrlFast(pfpA.file, pfpA.page) : fallbackThumb;
   const coverUrl = coverA ? pageJpegUrlFast(coverA.file, coverA.page) : profileAvatarUrl;
 
-  // ---- Sort docs cheaply BEFORE hitting worker ----
-  // Sorting by uploaded requires worker meta; EFTA id is a good proxy and free.
+  // Sort cheap (proxy) before hitting worker
   const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
-
-  // SSR only first window; fetch meta ONLY for those
   const ssrKeys = docsKeysSorted.slice(0, SSR_POST_LIMIT);
 
+  // Only meta for SSR window
   const meta = await filesByKeys(ssrKeys, { ttlMs: 10 * 60_000 });
   const metaByKey = new Map<string, WorkerFile>();
   for (const m of meta) metaByKey.set(m.key, m);
 
-  // years: for now only from SSR window (fast). You can lazy-load full years later.
+  // years only from SSR window (fast)
   const yearSet = new Set<string>();
   for (const m of meta) {
     const y = yearFromIso(m.uploaded);
     if (y) yearSet.add(y);
   }
   const years = ["Recent", ...Array.from(yearSet).sort((a, b) => Number(b) - Number(a))];
-
-  // ---- friends graph: memoize aggressively ----
-  const friends = await (async () => {
-    const cached = getCache(friendsCache, slug);
-    if (cached) return cached;
-
-    return once(`friends:${slug}`, async () => {
-      const allCelebs = getAllCelebrities();
-      const v = buildFriendsForPerson({
-        ownerSlug: slug,
-        allCelebs,
-        minConf: MIN_CONF,
-        manifest: null,
-        minConfOwner: 99.3,
-        minConfOther: 99.0,
-        pageWindow: 1,
-        minEdgeWeight: 1,
-        limit: 48,
-      });
-      return setCache(friendsCache, slug, v, 30 * 60_000); // 30 min
-    });
-  })();
-
-  // ---- "WITH people" index only for SSR keys ----
-  const allCelebs = getAllCelebrities();
-  const keysSet = new Set(ssrKeys);
-
-  const slugToName = new Map<string, string>();
-  for (const c of allCelebs) slugToName.set(slugifyName(c.name), c.name);
-
-  const byFile = buildPagePeopleIndex({ allCelebs, keysSet });
-
-  const WITH_MIN_CONF = 98.8;
-  const WITH_PAGE_WINDOW = 1;
 
   const posts: PagePost[] = ssrKeys
     .map((key) => {
@@ -321,34 +219,21 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
 
       const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
 
-      const imageUrl = pageJpegUrlFast(key, previewPage);
-
-      const withPeople = coPeopleForPost({
-        byFile,
-        file: key,
-        page: previewPage,
-        ownerSlug: slug,
-        slugToName,
-        minConfOther: WITH_MIN_CONF,
-        pageWindow: WITH_PAGE_WINDOW,
-        maxPeople: 6,
-      });
-
       return {
         key,
         url: fileUrl(key),
         timestamp: m?.uploaded ? formatTimestamp(m.uploaded) : "Unknown date",
         authorAvatar: profileAvatarUrl,
         content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
-        imageUrl,
-        withPeople,
+        imageUrl: pageJpegUrlFast(key, previewPage),
+        // withPeople hydrated later
       };
     })
     .reverse();
 
   const nextCursor = docsKeysSorted.length > SSR_POST_LIMIT ? String(SSR_POST_LIMIT) : null;
 
-  // ---- Wikidata: memoize + tolerate failure ----
+  // Wikidata: keep SSR for now (cached). If still slow, move off SSR later too.
   const wikidata = await (async () => {
     const k = celeb.name;
     const cached = getCache(wikidataCache, k);
@@ -356,7 +241,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
 
     return once(`wikidata:${k}`, async () => {
       const v = await fetchWikidataProfileByName(k).catch(() => null);
-      return setCache(wikidataCache, k, v, 24 * 60_000); // 24 min
+      return setCache(wikidataCache, k, v, 24 * 60_000);
     });
   })();
 
@@ -368,7 +253,6 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       years,
       profileAvatarUrl,
       coverUrl,
-      friends,
       posts,
       nextCursor,
       wikidata,
@@ -376,12 +260,61 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   };
 };
 
+function useJson<T>(url: string | null) {
+  const [data, setData] = React.useState<T | null>(null);
+  const [loading, setLoading] = React.useState(!!url);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetch(url, { headers: { Accept: "application/json" } })
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
+      .then((j) => {
+        if (!cancelled) setData(j);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e?.message ?? "error");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return { data, loading, error };
+}
+
 export default function PersonPage(props: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { name, years, posts, count, profileAvatarUrl, coverUrl, friends } = props;
+  const { name, years, posts, count, profileAvatarUrl, coverUrl, slug } = props;
   const [tab, setTab] = React.useState<ProfileTab>("timeline");
 
+  // Friends: fetched client-side (server cached)
+  const friendsRes = useJson<{ friends: FriendEdge[] }>(`/api/people/friends?slug=${encodeURIComponent(slug)}`);
+
+  // WITH people: fetched client-side in one batch for SSR posts
+  const postKeys = React.useMemo(() => posts.map((p) => p.key), [posts]);
+  const withRes = useJson<{ withByKey: Record<string, WithPerson[]> }>(
+    postKeys.length ? `/api/people/with-people?slug=${encodeURIComponent(slug)}&keys=${encodeURIComponent(postKeys.join(","))}` : null
+  );
+
+  const postsHydrated = React.useMemo(() => {
+    const map = withRes.data?.withByKey;
+    if (!map) return posts;
+    return posts.map((p) => ({ ...p, withPeople: map[p.key] || p.withPeople }));
+  }, [posts, withRes.data]);
+
   const photos = React.useMemo(() => {
-    return posts
+    return postsHydrated
       .filter((p) => !!p.imageUrl)
       .map((p) => ({
         key: p.key,
@@ -389,7 +322,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
         href: p.url,
         label: p.content,
       }));
-  }, [posts]);
+  }, [postsHydrated]);
 
   return (
     <div className="min-h-screen bg-background font-sans">
@@ -413,7 +346,11 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
           <aside className="space-y-4">
             <BioSection wikidata={props.wikidata!} />
-            <FriendsSection friends={friends} />
+
+            <FriendsSection
+              friends={friendsRes.data?.friends ?? []}
+              loading={friendsRes.loading}
+            />
           </aside>
 
           <main className="space-y-4 min-w-[30vw]">
@@ -421,7 +358,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
               <>
                 <CreatePost />
 
-                {posts.map((p) => (
+                {postsHydrated.map((p, i) => (
                   <div key={p.key}>
                     <NewsFeedPost
                       author={name}
@@ -430,13 +367,14 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
                       content={p.content}
                       imageUrl={p.imageUrl}
                       withPeople={p.withPeople}
+                      priorityImage={i === 0}
                     />
                   </div>
                 ))}
 
                 {props.nextCursor ? (
                   <div className="text-center text-sm text-muted-foreground py-4">
-                    Showing {posts.length} posts • load more coming next
+                    Showing {postsHydrated.length} posts • load more coming next
                   </div>
                 ) : null}
               </>
@@ -448,7 +386,9 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
               </div>
             )}
 
-            {tab === "friends" && <FriendGrid friends={friends} />}
+            {tab === "friends" && (
+              <FriendGrid friends={friendsRes.data?.friends ?? []} />
+            )}
 
             {tab === "photos" && <PhotoGrid photos={photos} />}
           </main>

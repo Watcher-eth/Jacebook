@@ -91,3 +91,51 @@ export function searchCelebs(q: string, limit = 8) {
   scored.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
   return scored.slice(0, limit);
 }
+const AVATAR_PLACEHOLDER_MAX = 512;
+const avatarPlaceholderCache = new Map<string, string>();
+
+function lruSet(map: Map<string, string>, k: string, v: string, max: number) {
+  if (map.has(k)) map.delete(k);
+  map.set(k, v);
+  while (map.size > max) {
+    const oldest = map.keys().next().value as string | undefined;
+    if (!oldest) break;
+    map.delete(oldest);
+  }
+}
+
+export function avatarPlaceholderDataUri(label: string, size = 90) {
+    const key = `${size}::${label || ""}`;
+    const hit = avatarPlaceholderCache.get(key);
+    if (hit) {
+      // touch (LRU-ish)
+      avatarPlaceholderCache.delete(key);
+      avatarPlaceholderCache.set(key, hit);
+      return hit;
+    }
+  
+    const text = (label || "?")
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((s) => s[0]!.toUpperCase())
+      .join("");
+  
+    const svg = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
+    <defs>
+      <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#262626"/>
+        <stop offset="1" stop-color="#343434"/>
+      </linearGradient>
+    </defs>
+    <rect width="100%" height="100%" rx="${Math.floor(size / 2)}" fill="url(#g)"/>
+    <text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle"
+          font-family="ui-sans-serif, system-ui" font-size="${Math.floor(size * 0.38)}"
+          fill="#F9F9F9">${text || "?"}</text>
+  </svg>`.trim();
+  
+    const uri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    lruSet(avatarPlaceholderCache, key, uri, AVATAR_PLACEHOLDER_MAX);
+    return uri;
+  }
