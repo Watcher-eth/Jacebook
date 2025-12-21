@@ -72,59 +72,77 @@ export async function fetchPdfManifest(): Promise<PdfManifest | null> {
 function isString(x: any): x is string {
   return typeof x === "string";
 }
-
-/**
- * Best-effort resolver for common manifest shapes.
- * Returns an R2 key (NOT full URL) or null.
- */
-export function resolvePageJpegKey(manifest: PdfManifest, pdfKey: string, page: number): string | null {
-  if (!manifest) return null;
-
-  // Shape A: manifest[pdfKey][page] or manifest[pdfKey].pages[page]
-  const direct = manifest?.[pdfKey];
-  if (direct) {
-    const a = direct?.[page];
+  /**
+   * Best-effort resolver for common manifest shapes.
+   * Returns an R2 key (NOT full URL) or null.
+   */
+  export function resolvePageJpegKey(manifest: PdfManifest, pdfKey: string, page: number): string | null {
+    if (!manifest) return null;
+  
+    const direct = (manifest as any)?.[pdfKey];
+    if (!direct) return null;
+  
+    // ✅ Your manifest shape: { pages: number }
+    // Derive: pdfs-as-jpegs/<pdfKey-without-.pdf>/page-XYZ.jpg
+    const n = (direct as any)?.pages;
+    if (typeof n === "number" && n > 0) {
+      if (page < 1 || page > n) return null;
+      const base = pdfKey.replace(/\.pdf$/i, "");
+      const p = String(page).padStart(3, "0");
+      return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
+    }
+  
+    // Shape A: manifest[pdfKey][page] or manifest[pdfKey].pages[page]
+    const a = (direct as any)?.[page];
     if (isString(a)) return a;
-    const b = direct?.pages?.[page];
+  
+    const b = (direct as any)?.pages?.[page];
     if (isString(b)) return b;
-    const c = direct?.pages?.[String(page)];
+  
+    const c = (direct as any)?.pages?.[String(page)];
     if (isString(c)) return c;
-
+  
     // Shape B: manifest[pdfKey].pages is array of strings or objects
-    if (Array.isArray(direct?.pages)) {
-      const entry = direct.pages[page - 1];
+    if (Array.isArray((direct as any)?.pages)) {
+      const entry = (direct as any).pages[page - 1];
       if (isString(entry)) return entry;
-      const key = entry?.key || entry?.jpg || entry?.path;
+  
+      const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
       if (isString(key)) return key;
     }
-  }
-
-  // Shape C: manifest.items = [{ pdfKey, pages: [...] }]
-  if (Array.isArray(manifest?.items)) {
-    const item = manifest.items.find((x: any) => x?.pdfKey === pdfKey || x?.pdf === pdfKey || x?.key === pdfKey);
-    if (item) {
-      const pages = item.pages;
-      if (Array.isArray(pages)) {
-        const entry = pages[page - 1];
-        if (isString(entry)) return entry;
-        const key = entry?.key || entry?.jpg || entry?.path;
-        if (isString(key)) return key;
+  
+    // Shape C: manifest.items = [{ pdfKey, pages: [...] }]
+    if (Array.isArray((manifest as any)?.items)) {
+      const item = (manifest as any).items.find(
+        (x: any) => x?.pdfKey === pdfKey || x?.pdf === pdfKey || x?.key === pdfKey
+      );
+  
+      if (item) {
+        const pages = item.pages;
+  
+        if (Array.isArray(pages)) {
+          const entry = pages[page - 1];
+          if (isString(entry)) return entry;
+  
+          const key = (entry as any)?.key || (entry as any)?.jpg || (entry as any)?.path;
+          if (isString(key)) return key;
+        }
+  
+        const maybe = item?.pages?.[page] || item?.pages?.[String(page)];
+        if (isString(maybe)) return maybe;
       }
-      const maybe = item?.pages?.[page] || item?.pages?.[String(page)];
-      if (isString(maybe)) return maybe;
     }
+  
+    return null;
+  }
+  
+  export function pageJpegUrlOrThumb(manifest: PdfManifest | null, pdfKey: string, page: number) {
+    const jpgKey = manifest ? resolvePageJpegKey(manifest, pdfKey, page) : null;
+    if (jpgKey) return fileUrl(jpgKey); // ✅ adds ?v=...
+    return thumbnailUrlForPdf(pdfKey);
   }
 
-  return null;
-}
-
-export function pageJpegUrlOrThumb(manifest: PdfManifest | null, pdfKey: string, page: number) {
-    const jpgKey = resolvePageJpegKey(manifest, pdfKey, page);
-    if (jpgKey) return fileUrl(jpgKey); 
-    return fileUrl(thumbnailKeyForPdf(pdfKey));
+  export function parseEftaId(key: string) {
+    const m = key.match(/EFTA(\d+)\.pdf$/i);
+    return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
   }
-
-export function parseEftaId(key: string) {
-  const m = key.match(/EFTA(\d+)\.pdf$/i);
-  return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
-}

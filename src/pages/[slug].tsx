@@ -342,8 +342,8 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       const pageHint = shown.length ? `Pages: ${shown.join(", ")}${pages.length > shown.length ? "…" : ""}` : "";
 
       const imageUrl = manifest
-        ? pageJpegUrlOrThumb(manifest, d.key, d.previewPage)
-        : fileUrl(thumbnailKeyForPdf(d.key));
+      ? pageJpegUrlOrThumb(manifest, d.key, d.previewPage)
+      : fileUrl(thumbnailKeyForPdf(d.key));
 
       const withPeople = coPeopleForPost({
         byFile,
