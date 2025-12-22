@@ -15,13 +15,15 @@ export function ProfileHeader(props: {
   activeTab?: ProfileTab;
   onTabChange?: (tab: ProfileTab) => void;
 }) {
-  const { name } = props;
-  const coverUrl = props.coverUrl ?? "/medical-illustration-showing-human-spine-and-skele.jpg";
-  const avatarUrl = props.avatarUrl ?? "/professional-black-and-white-portrait-man-in-suit.jpg";
-  const verified = props.verified ?? true;
-
-  const activeTab = props.activeTab ?? "timeline";
-  const onTabChange = props.onTabChange ?? (() => {});
+  const {
+    name,
+    coverUrl,
+    avatarUrl,
+    verified = true,
+    friendsCount = 0,
+    activeTab = "timeline",
+    onTabChange = () => {},
+  } = props;
 
   const initials = name
     .split(" ")
@@ -30,19 +32,17 @@ export function ProfileHeader(props: {
     .map((s) => s[0]?.toUpperCase())
     .join("");
 
-  const tabBtn = (tab: ProfileTab, label: React.ReactNode) => {
+  const tabBtn = (tab: ProfileTab, label: React.ReactNode, extra = "") => {
     const active = activeTab === tab;
     return (
       <Button
         key={tab}
-        type="button"
         variant="ghost"
         onClick={() => onTabChange(tab)}
         className={[
-          "rounded-none hover:bg-muted hover:scale-101 active:scale-[0.99]",
-          active
-            ? "border-b-4 border-primary text-primary hover:bg-transparent hover:scale-101 active:scale-99 -mb-px"
-            : "",
+          "rounded-none text-sm pl-0 md:pl-2",
+          active ? "border-b-4 border-primary text-primary -mb-px" : "",
+          extra,
         ].join(" ")}
       >
         {label}
@@ -52,18 +52,20 @@ export function ProfileHeader(props: {
 
   return (
     <div className="bg-card">
-      {/* Full-bleed cover */}
-      <div className="relative w-full bg-muted">
-        <div className="relative h-[315px] w-full">
-          {coverUrl.length > 10 ? <img src={ coverUrl } alt="Cover" className="h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
+      {/* COVER */}
+      <div className="relative h-[170px] md:h-[315px] bg-muted">
+        {coverUrl ? (
+          <img src={coverUrl} className="h-full  w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-primary" />
+        )}
 
-          {/* Optional dark gradient for readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-          {/* Centered overlay content */}
-          <div className="absolute inset-x-0 bottom-[10px]">
+        {/* NAME + ACTIONS (DESKTOP ONLY) */}
+        <div className="absolute md:block hidden -inset-x-1 bottom-[10px]">
             <div className="max-w-[1050px] mx-auto px-4">
-              <div className="flex items-center justify-between pl-[200px]">
+              <div className="flex items-center justify-between pl-[190px]">
                 <h1 className="text-3xl font-bold text-white flex items-center gap-2 drop-shadow-md">
                   {name}
                   {verified && (
@@ -96,35 +98,65 @@ export function ProfileHeader(props: {
               </div>
             </div>
           </div>
-        </div>
+
       </div>
 
-      {/* Centered avatar + tabs (still max width) */}
-      <div className="max-w-[1050px] mx-auto px-4 -mt-30">
-        <div className="flex items-end gap-4">
-          <div className="border border-gray-300 rounded-md relative -top-3 hover:scale-101">
-            <Avatar className="h-[165px] w-[165px] border-5 bg-white border-card rounded-md flex-shrink-0">
-              {avatarUrl ? (
-                <AvatarImage src={avatarUrl} className="rounded-md object-cover" />
-              ) : (
-                <AvatarFallback className="text-5xl rounded-md">{initials || "?"}</AvatarFallback>
-              )}
-            </Avatar>
-          </div>
-
-          <div className="flex items-center gap-1 border-b border-border flex-1 pb-0">
-            {tabBtn("timeline", "Timeline")}
-            {tabBtn("about", "About")}
-            {tabBtn(
-              "friends",
-              <>
-                Friends{" "}
-                <span className="-ml-0.5 text-muted-foreground text-xs">
-                  {props.friendsCount} Mutual
-                </span>
-              </>
+      {/* AVATAR + (MOBILE NAME ROW) + TABS */}
+      <div className="max-w-[1050px] mx-auto px-4 -mt-12 md:-mt-24">
+        <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4">
+          {/* Left: Avatar */}
+          <Avatar
+            className="
+              bg-white border rounded-md
+              h-[96px] w-[96px]
+              md:h-[165px] md:w-[165px]
+              flex-shrink-0 md:-mt-6 md:-top-3 
+            "
+          >
+            {avatarUrl ? (
+              <AvatarImage src={avatarUrl} className="object-cover" />
+            ) : (
+              <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
             )}
-            {tabBtn("photos", "Photos")}
+          </Avatar>
+
+          {/* Right: Mobile name + Friends button + Tabs */}
+          <div className="flex-1 min-w-0">
+            {/* MOBILE NAME ROW (avatar left, name right) */}
+            <div className="md:hidden flex items-center justify-between gap-2 -mt-1">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2 truncate">
+                  <span className="truncate">{name}</span>
+                  {verified && (
+                    <span className="bg-blue-500 rounded-full p-1">
+                      <Check className="h-2.5 w-2.5 text-white" />
+                    </span>
+                  )}
+                </h1>
+              </div>
+
+              <Button size="sm" className="bg-white text-foreground border">
+                Friends
+              </Button>
+            </div>
+
+            {/* DESKTOP TABS */}
+            <div className="flex  border-b border-border gap-2">
+              {tabBtn("timeline", "Timeline")}
+              {tabBtn("about", "About")}
+              {tabBtn(
+                "friends",
+                <>
+                  Friends{" "}
+                  <span className="text-xs text-muted-foreground ml-1">
+                    {friendsCount}
+                  </span>
+                </>
+              )}
+              {tabBtn("photos", "Photos")}
+            </div>
+
+        
           </div>
         </div>
       </div>

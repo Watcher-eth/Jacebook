@@ -129,7 +129,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverAnchor asChild>
-        <div className={cn("relative w-120", props.className)}>
+        <div className={cn("relative w-full md:w-120", props.className)}>
           <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             ref={inputRef}
@@ -141,7 +141,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
-            placeholder="Search for people, places and things"
+            placeholder="Search for people..."
             className={cn(
               "pl-2 h-7 bg-white rounded-md border-none text-muted-foreground placeholder:text-muted-foreground focus-visible:ring-muted-foreground/50 text-sm",
               props.inputClassName

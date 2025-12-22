@@ -7,7 +7,7 @@ import { FacebookNavbar } from "@/components/layout/navbar";
 import { NewsFeedSidebar } from "@/components/feed/sidebarLeft";
 import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
-import { type CommunityPerson, CommunityPeopleGrid } from "@/components/feed/community"
+import { type CommunityPerson, CommunityPeopleGrid } from "@/components/feed/community";
 
 function useJson<T>(url: string | null) {
   const [data, setData] = React.useState<T | null>(null);
@@ -49,8 +49,11 @@ function titleCase(s: string) {
 
 export default function CommunityPage() {
   const router = useRouter();
-  const type = typeof router.query.filter === "string" ? router.query.filter : "";
 
+  // If your file is /pages/community/[type].tsx then this should be `router.query.type`
+  // If it's /pages/c/[filter].tsx then use `router.query.filter`
+  const type = typeof router.query.filter === "string" ? router.query.filter : "";
+  
   const peopleRes = useJson<{ people: CommunityPerson[] }>(
     type ? `/api/people/c?community=${encodeURIComponent(type)}` : null
   );
@@ -59,12 +62,22 @@ export default function CommunityPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Head>
+        <title>{title}</title>
+        <meta
+          name="description"
+          content={type ? `Community page for ${type}` : "Community page"}
+        />
+      </Head>
+
       <FacebookNavbar />
 
       <div className="max-w-[1050px] mx-auto flex gap-3">
-        <NewsFeedSidebar />
+        <div className="hidden md:block">
+          <NewsFeedSidebar />
+        </div>
 
-        <main className="flex-1 py-4 space-y-3">
+        <main className="flex-1 py-4 space-y-3 min-w-0 px-3 md:px-0">
           <CreatePost />
 
           {peopleRes.error ? (
@@ -80,7 +93,9 @@ export default function CommunityPage() {
           )}
         </main>
 
-        <NewsFeedRightSidebar />
+        <div className="hidden lg:block">
+          <NewsFeedRightSidebar />
+        </div>
       </div>
     </div>
   );

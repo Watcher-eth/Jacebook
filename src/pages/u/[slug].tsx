@@ -344,41 +344,57 @@ const photos = React.useMemo(() => {
         onTabChange={setTab}
         friendsCount={friendsRes.data?.friends?.length ?? 0}
       />
-
       <div className="max-w-[1050px] mx-auto px-4 py-5">
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
-          <aside className="space-y-4">
+          {/* LEFT SIDEBAR:
+              - Desktop: always show (lg+)
+              - Mobile: only show on timeline tab
+          */}
+          <aside className={tab === "timeline" ? "space-y-4" : "hidden lg:block space-y-4"}>
             <BioSection wikidata={wdRes.data?.wikidata ?? null} loading={wdRes.loading} />
-            <FriendsSection friends={friendsRes.data?.friends ?? []} loading={friendsRes.loading} name={slug} />
+            <FriendsSection
+              friends={friendsRes.data?.friends ?? []}
+              loading={friendsRes.loading}
+              name={slug}
+            />
           </aside>
 
-          <main className="space-y-4 min-w-[30vw]">
+          <main className="space-y-4 min-w-0">
             {tab === "timeline" && (
               <>
+                {/* CreatePost only on timeline (mobile + desktop) */}
                 <CreatePost />
-                {postsHydrated?.length > 0 ? postsHydrated.map((p, i) => (
-  <div key={p.key}>
-    <NewsFeedPost
-      likedBy={p.likedBy ?? []}
-      author={name}
-      authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
-      timestamp={p.timestamp}
-      content={p.content}
-      imageUrl={p.imageUrl}
-      hqImageUrl={p.hqImageUrl}
-      withPeople={p.withPeople}
-      priorityImage={i === 0}
-    />
-  </div>
-)) : (
-  <div className="text-center text-lg text-muted-foreground py-4">No posts found</div>
-)}
 
-<div ref={loadRef} className="h-10" />
+                {postsHydrated?.length > 0 ? (
+                  postsHydrated.map((p, i) => (
+                    <div key={p.key}>
+                      <NewsFeedPost
+                        likedBy={p.likedBy ?? []}
+                        author={name}
+                        authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
+                        timestamp={p.timestamp}
+                        content={p.content}
+                        imageUrl={p.imageUrl}
+                        hqImageUrl={p.hqImageUrl}
+                        withPeople={p.withPeople}
+                        priorityImage={i === 0}
+                      />
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-lg text-muted-foreground py-4">
+                    No posts found
+                  </div>
+                )}
 
-{loadingMore ? (
-  <div className="text-center text-sm text-muted-foreground py-4">Loading more…</div>
-) : null}
+                <div ref={loadRef} className="h-10" />
+
+                {loadingMore ? (
+                  <div className="text-center text-sm text-muted-foreground py-4">
+                    Loading more…
+                  </div>
+                ) : null}
+
                 {props.nextCursor ? (
                   <div className="text-center text-sm text-muted-foreground py-4">
                     Showing {postsHydrated.length} posts • load more coming next
@@ -397,6 +413,7 @@ const photos = React.useMemo(() => {
             {tab === "photos" && <PhotoGrid photos={photos} />}
           </main>
 
+          {/* RIGHT SIDEBAR stays desktop-only */}
           <aside className="hidden lg:block">
             <TimelineSection years={years} />
           </aside>

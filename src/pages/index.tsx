@@ -104,36 +104,42 @@ export default function NewsFeedPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <FacebookNavbar />
+    <FacebookNavbar />
 
-      <div className="max-w-[1050px] mx-auto flex gap-3">
+    <div className="max-w-[1050px] mx-auto flex gap-3">
+      <div className="hidden md:block">
         <NewsFeedSidebar />
+      </div>
 
-        <main className="flex-1 py-4 space-y-3">
-          <CreatePost />
+      <main className="flex-1 py-4 space-y-3 min-w-0 px-3 md:px-0">
+        <CreatePost />
 
-          {posts.map((p, i) => (
-            <div key={`${p.authorSlug}::${p.key}`}>
-              <NewsFeedPost
-                likedBy={p.likedBy ?? []}
-                withPeople={p.withPeople ?? []}  // ✅ pass it
-                author={p.author}
-                authorAvatar={p.authorAvatar || "/placeholder.svg"}
-                timestamp={p.timestamp}
-                content={p.content}
-                imageUrl={p.imageUrl}
-                hqImageUrl={p.hqImageUrl}
-                priorityImage={i === 0}
-              />
-            </div>
-          ))}
+        {posts.map((p, i) => (
+          <div key={`${p.authorSlug}::${p.key}`}>
+            <NewsFeedPost
+              likedBy={p.likedBy ?? []}
+              withPeople={p.withPeople ?? []}
+              author={p.author}
+              authorAvatar={p.authorAvatar || "/placeholder.svg"}
+              timestamp={p.timestamp}
+              content={p.content}
+              imageUrl={p.imageUrl}
+              hqImageUrl={p.hqImageUrl}
+              priorityImage={i === 0}
+            />
+          </div>
+        ))}
 
-          <div ref={loadRef} className="h-10" />
-          {loadingMore ? <div className="text-center text-sm text-muted-foreground py-4">Loading more…</div> : null}
-        </main>
+        <div ref={loadRef} className="h-10" />
+        {loadingMore ? (
+          <div className="text-center text-sm text-muted-foreground py-4">Loading more…</div>
+        ) : null}
+      </main>
 
+      <div className="hidden lg:block">
         <NewsFeedRightSidebar />
       </div>
     </div>
+  </div>
   );
 }
