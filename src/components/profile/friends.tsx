@@ -26,8 +26,8 @@ const epsteinFriend = {
   avatarUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg"
 }
 
-export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean }) {
-  const { friends, loading } = props;
+export function FriendsSection(props: { friends: FriendEdge[]; loading?: boolean, name: string }) {
+  const { friends, loading, name } = props;
 
 const hasEpstein = friends?.filter((f) => f.slug === "jeffrey-epstein")[0]
 
@@ -41,7 +41,7 @@ const hasEpstein = friends?.filter((f) => f.slug === "jeffrey-epstein")[0]
     <Card className="p-4">
       <div className="flex items-center justify-between -mb-4">
         <h2 className="font-bold text-foreground">
-          FRIENDS
+          {name === "jeffrey-epstein" ? "" : "MUTUAL"} FRIENDS
           <span className="text-muted-foreground font-normal text-sm ml-2">· {count}</span>
         </h2>
       </div>
@@ -61,7 +61,7 @@ const hasEpstein = friends?.filter((f) => f.slug === "jeffrey-epstein")[0]
       ) : (
         <div className="grid grid-cols-3 gap-2 mt-1.5">
           {friendsWithEpstein.map((f) => (
-            <Link key={f?.slug} href={`/${f?.slug}`} className="relative group cursor-pointer hover:scale-101 active:scale-99">
+            <Link key={f?.slug} href={`/u/${f?.slug}`} className="relative group cursor-pointer hover:scale-101 active:scale-99">
               <Avatar className="h-[95px] w-full rounded-md">
                 <AvatarImage className="rounded-md object-cover" src={f?.avatarUrl || ""} />
                 <AvatarFallback className="rounded-md">{initialsFromName(f?.name || "")}</AvatarFallback>

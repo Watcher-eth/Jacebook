@@ -50,7 +50,6 @@ export function ProfileHeader(props: {
     );
   };
 
-  console.log("cover", coverUrl, coverUrl.length)
   return (
     <div className="bg-card">
       {/* Full-bleed cover */}
@@ -74,7 +73,7 @@ export function ProfileHeader(props: {
                   )}
                 </h1>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 md:-left-10">
                   <Button size="sm" className="bg-white rounded-md hover:bg-white/90 text-foreground shadow-sm">
                     <Check strokeWidth={3} className="h-3 w-3 text-foreground/80" />
                     Friends
@@ -126,7 +125,6 @@ export function ProfileHeader(props: {
               </>
             )}
             {tabBtn("photos", "Photos")}
-            {tabBtn("more", "More")}
           </div>
         </div>
       </div>

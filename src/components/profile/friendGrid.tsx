@@ -19,7 +19,7 @@ function initialsFromName(name: string) {
 export function FriendGrid({ friends }: { friends: FriendEdge[] }) {
   return (
     <Card className="p-4 bg-white">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-0">
         <h2 className="font-bold text-foreground">Mutual Friends</h2>
         <div className="text-sm text-muted-foreground">{friends.length}</div>
       </div>
@@ -33,7 +33,7 @@ export function FriendGrid({ friends }: { friends: FriendEdge[] }) {
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <Link href={`/${f.slug}`} className="font-semibold text-sm text-primary hover:underline block truncate">
+              <Link href={`/u/${f.slug}`} className="font-semibold text-sm text-primary hover:underline block truncate">
                 {f.name}
               </Link>
               <div className="text-xs text-muted-foreground mt-0.5">

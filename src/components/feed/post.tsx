@@ -89,7 +89,7 @@ export function NewsFeedPost({
         <div className="flex items-start justify-between mb-2">
           <div className="flex gap-2 items-center">
             
-          <Link href={`/${slugifyName(props.author)}`}><Avatar className="h-12 w-12 rounded-sm">
+          <Link href={`/u/${slugifyName(props.author)}`}><Avatar className="h-12 w-12 rounded-sm">
               <AvatarImage className="rounded-sm object-cover" src={props.authorAvatar || ""} />
               {!props.authorAvatar ? (
                 <AvatarFallback className="rounded-sm">{initialsFromName(props.author)}</AvatarFallback>
@@ -97,7 +97,7 @@ export function NewsFeedPost({
             </Avatar></Link>
 
             <div className="min-w-0">
-              <Link href={`/${slugifyName(props.author)}`} className="font-semibold text-sm text-primary hover:underline cursor-pointer">
+              <Link href={`/u/${slugifyName(props.author)}`} className="font-semibold text-sm text-primary hover:underline cursor-pointer">
                 {props.author}
               </Link>
 
@@ -106,7 +106,7 @@ export function NewsFeedPost({
                   <span className="mr-1">with</span>
                   {withPeople.slice(0, 3).map((p, i) => (
                     <span key={p.slug}>
-                      <Link href={`/${p.slug}`} className="text-primary hover:underline">
+                      <Link href={`/u/${p.slug}`} className="text-primary hover:underline">
                         {p.name}
                       </Link>
                       {i < Math.min(withPeople.length, 3) - 1 ? ", " : ""}
@@ -157,7 +157,7 @@ export function NewsFeedPost({
     {likedBy.slice(0, 2).map((p) => (
       <Link
         key={p.slug}
-        href={`/${p.slug}`}
+        href={`/u/${p.slug}`}
         className="text-primary font-semibold hover:underline"
       >
         {p.name},

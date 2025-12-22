@@ -10,15 +10,15 @@ export function NewsFeedRightSidebar() {
       <div className="bg-white py-3">
       <div className="px-3 bg-white pb-2" >
         <div className="flex items-center gap-1.5 mb-2">
-          <img src="./icons/Gift.png" className="h-5 w-5 rounded flex items-center justify-center"/>
+          <img src="../icons/Gift.png" className="h-5 w-5 rounded flex items-center justify-center"/>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              <Link href="/ghislaine-maxwell" className="text-primary hover:underline cursor-pointer">Ghislaine Maxwell</Link> and 1 other
+              <Link href="/u/ghislaine-maxwell" className="text-primary hover:underline cursor-pointer">Ghislaine Maxwell</Link> and 1 other
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <img src="./icons/Calendar.png" className="h-5 w-5 rounded flex items-center justify-center"/>
+          <img src="../icons/Calendar.png" className="h-5 w-5 rounded flex items-center justify-center"/>
           <div>
             <p className="text-sm">
               <span className="font-semibold text-primary hover:underline cursor-pointer">2 events</span> this week
@@ -48,7 +48,7 @@ export function NewsFeedRightSidebar() {
             <div>
               <p className="text-sm">
                 <span className="text-muted-foreground">How</span>{" "}
-                <Link href="/bill-clinton" className="font-semibold text-primary hover:underline cursor-pointer">Bill Clinton</Link>{" "}
+                <Link href="/u/bill-clinton" className="font-semibold text-primary hover:underline cursor-pointer">Bill Clinton</Link>{" "}
                 <span className="text-muted-foreground">became the focus of the Epstein files</span>
               </p>
             </div>
@@ -57,10 +57,10 @@ export function NewsFeedRightSidebar() {
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm">
-                <span className="text-muted-foreground">Photo of</span>{" "}
-                <Link href="/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">President Trump</Link>{" "}
+                <span className="text-muted-foreground">Photo showing</span>{" "}
+                <Link href="/u/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">President Trump</Link>{" "}
                 <span className="text-muted-foreground">and</span>{" "}
-                <Link href="/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">First Lady Melania Trump</Link>{" "}
+                <Link href="/u/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">First Lady Melania Trump</Link>{" "}
                 <span className="text-muted-foreground">reuploaded by the DoJ</span>
               </p>
             </div>
@@ -80,7 +80,7 @@ export function NewsFeedRightSidebar() {
         </div>
         <div className="space-y-3 px-3">
           {/* Greg Marra */}
-          <Link href="/ted-waitt" className="flex items-center gap-2">
+          <Link href="/u/ted-waitt" className="flex items-center gap-2">
             <Avatar className="h-12 w-12 rounded-sm">
               <AvatarImage className="rounded-sm object-cover" src="https://jacebook-worker.jacebook.workers.dev/pdfs-as-jpegs/VOL00002/IMAGES/0001/EFTA00003383/page-001.jpg?v=20251221" />
               <AvatarFallback className="rounded-sm">BC</AvatarFallback>
@@ -96,7 +96,7 @@ export function NewsFeedRightSidebar() {
           </Link>
 
           {/* Mike Rumble */}
-          <Link href="/mick-jagger" className="flex  items-center gap-2">
+          <Link href="/u/mick-jagger" className="flex  items-center gap-2">
             <Avatar className="h-12 w-12 rounded-sm">
               <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Rolling_Stones_04.jpg" />
               <AvatarFallback className="rounded-sm">MJ</AvatarFallback>
@@ -112,7 +112,7 @@ export function NewsFeedRightSidebar() {
           </Link>
 
           {/* Julie Zhuo */}
-          <Link href="/chris-tucker" className="flex items-center gap-2 ">
+          <Link href="/u/chris-tucker" className="flex items-center gap-2 ">
             <Avatar className="h-12 w-12 rounded-sm">
               <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Chris_Tucker_by_Gage_Skidmore.jpg" />
               <AvatarFallback className="rounded-sm">JZ</AvatarFallback>
@@ -133,7 +133,7 @@ export function NewsFeedRightSidebar() {
       {/* Footer */}
       <div className="border-t pt-3 px-3 ">
         <p className="text-xs text-muted-foreground">
-          English (US) · DoJ Release · Credits · More <br />
+          English (US) <Link href={"https://www.justice.gov/epstein"}>· DoJ Release</Link>{" "}<Link href={"jmail.world"}>· More Resources </Link><br />
           Jacebook © 2025
         </p>
       </div>

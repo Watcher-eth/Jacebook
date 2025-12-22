@@ -177,7 +177,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
         align="start"
         side="bottom"
         sideOffset={6}
-        className="w-96 p-0 rounded-sm border border-border shadow-lg bg-white z-[9999]"
+        className="w-120 p-0 rounded-sm border border-border shadow-lg bg-white z-[9999]"
         onOpenAutoFocus={(e) => e.preventDefault()}
         // Don’t dismiss when clicking inside, and don’t treat input interactions as “outside”
         onInteractOutside={(e) => {
@@ -216,6 +216,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
                   const name = row.p.name;
                   const isActive = idx === active;
 
+                  if(row.avatarUrl)
                   return (
                     <button
                       key={name}

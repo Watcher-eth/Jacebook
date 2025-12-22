@@ -5,6 +5,8 @@ import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
 import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
 
+type WithPerson = { name: string; slug: string };
+
 type FeedPost = {
   key: string;
   url: string;
@@ -16,6 +18,7 @@ type FeedPost = {
   imageUrl?: string;
   hqImageUrl?: string;
   likedBy?: LikedByPerson[];
+  withPeople?: WithPerson[]; // ✅ add this
 };
 
 function useJson<T>(url: string | null) {
@@ -53,7 +56,6 @@ export default function NewsFeedPage() {
   const [loadingMore, setLoadingMore] = React.useState(false);
   const loadRef = React.useRef<HTMLDivElement | null>(null);
 
-  // first fetch
   const first = useJson<{ posts: FeedPost[]; nextCursor: string | null }>(
     posts.length === 0 ? `/api/feed/posts?cursor=0&limit=12` : null
   );
@@ -113,6 +115,7 @@ export default function NewsFeedPage() {
             <div key={`${p.authorSlug}::${p.key}`}>
               <NewsFeedPost
                 likedBy={p.likedBy ?? []}
+                withPeople={p.withPeople ?? []}  // ✅ pass it
                 author={p.author}
                 authorAvatar={p.authorAvatar || "/placeholder.svg"}
                 timestamp={p.timestamp}

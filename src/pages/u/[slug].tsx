@@ -353,7 +353,7 @@ const photos = React.useMemo(() => {
         <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr_250px] gap-4">
           <aside className="space-y-4">
             <BioSection wikidata={wdRes.data?.wikidata ?? null} loading={wdRes.loading} />
-            <FriendsSection friends={friendsRes.data?.friends ?? []} loading={friendsRes.loading} />
+            <FriendsSection friends={friendsRes.data?.friends ?? []} loading={friendsRes.loading} name={slug} />
           </aside>
 
           <main className="space-y-4 min-w-[30vw]">

@@ -46,31 +46,28 @@ export function BioSection({
     s?.youtube?.startsWith("http") ? s.youtube : s?.youtube ? `https://www.youtube.com/channel/${s.youtube}` : null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <Card className="p-4">
-        <div className="space-y-3 text-sm">
-          <div className="flex gap-3">
-            <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
-            <div>
-              <span className="text-foreground">Born: </span>
-              <span className="font-semibold text-primary">
-                {wikidata?.dob?.replaceAll("-", "/") ?? "Unknown"}
-              </span>
-            </div>
+
+
+
+          <div className="flex gap-2 items-center">
+            <img className="h-4 w-4 text-muted-foreground flex-shrink-0" src="../icons/Heart.png" />
+            <span className="text-foreground">{wikidata?.relationship}</span>
           </div>
 
-          <div className="flex gap-3 items-center">
-            <Heart className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <span className="text-foreground">{rel}</span>
+          <div className="flex gap-2 items-center">
+            <img className="h-4 w-4 text-muted-foreground flex-shrink-0" src="../icons/Globe.png" />
+            <span className="text-foreground">Nationality: {wikidata?.nationality}</span>
           </div>
-
-          <div className="flex gap-3 items-start">
-            <Briefcase className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+        
+          <div className="flex gap-1.5 items-start">
+            <img className="h-4.5 w-5 text-muted-foreground mt-1" src="../icons/work.png" />
             <div className="text-foreground">
-              {jobs.length ? (
+              {wikidata?.occupations?.length ? (
                 <>
-                  <span className="font-semibold text-primary">{jobs.slice(0, 4).join(", ")}</span>
-                  {jobs.length > 4 ? <span className="text-muted-foreground">, …</span> : null}
+                  <span className="font-semibold text-primary">{wikidata.occupations.slice(0, 4).map((job) => job.charAt(0).toUpperCase() + job.slice(1)).join(", ")}</span>
+                  {wikidata.occupations.length > 4 ? <span className="text-muted-foreground">, …</span> : null}
                 </>
               ) : (
                 "Occupation unknown"
@@ -78,43 +75,30 @@ export function BioSection({
             </div>
           </div>
 
-          {(twitterUrl || igUrl || ytUrl || s?.wikipedia || s?.wikidata || wikidata?.officialWebsite) && (
-            <div className="flex gap-2 items-center pt-1">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <div className="flex flex-wrap gap-3">
-                {twitterUrl && (
-                  <SocialLink href={twitterUrl} label="Twitter">
-                    <Twitter className="h-4 w-4" />
-                    <span className="font-semibold text-primary mt-0.5">{s?.twitter}</span>
-                  </SocialLink>
-                )}
-                {igUrl && (
-                  <SocialLink href={igUrl} label="Instagram">
-                    <Instagram className="h-4 w-4" />
-                    <span className="font-semibold text-primary mt-0.5">{s?.instagram}</span>
-                  </SocialLink>
-                )}
-                {ytUrl && (
-                  <SocialLink href={ytUrl} label="YouTube">
-                    <Youtube className="h-4 w-4" />
-                    <span className="font-semibold text-primary mt-0.5">YouTube</span>
-                  </SocialLink>
-                )}
+          {(wikidata?.socials?.twitter || wikidata?.socials?.instagram || wikidata?.socials?.youtube || wikidata?.socials?.wikipedia || wikidata?.socials?.wikidata || wikidata?.officialWebsite) && (
+            <div className="flex gap-2 items-center -mt-1">
+              <img className="h-4 w-4 text-muted-foreground" src="../icons/Feed.png" />
+              <div className="flex flex-wrap gap-2">
+               
                 {wikidata?.officialWebsite && (
-                  <SocialLink href={wikidata.officialWebsite} label="Website">
-                    <span className="font-semibold text-primary mt-0.5">Website</span>
-                  </SocialLink>
+                  <a href={wikidata.officialWebsite} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary mt-0.5">Website</a>
                 )}
-                {s?.wikipedia && (
-                  <SocialLink href={s.wikipedia} label="Wikipedia">
-                    <span className="font-semibold text-primary mt-0.5">Wikipedia</span>
-                  </SocialLink>
+                {wikidata?.socials?.twitter && (
+                  <a href={wikidata.socials.twitter} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary mt-0.5">Twitter</a>
+                )}
+                {wikidata?.socials?.instagram && (
+                  <a href={wikidata.socials.instagram} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary mt-0.5">Instagram</a>
+                )}
+                {wikidata?.socials?.youtube && (
+                  <a href={wikidata.socials.youtube} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary mt-0.5">YouTube</a>
+                )}
+                {wikidata?.socials?.wikipedia && (
+                  <a href={wikidata.socials.wikipedia} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary mt-0.5">Wikipedia</a>
                 )}
              
               </div>
             </div>
           )}
-        </div>
       </Card>
     </div>
   );
