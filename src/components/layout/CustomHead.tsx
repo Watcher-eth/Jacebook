@@ -48,7 +48,7 @@ function HomeSeo() {
       }}
       twitter={{
         ...DEFAULT_TWITTER_INFO,
-        images: [ogImageUrl],
+        cardType: "summary_large_image",
       }}
     />
   );
@@ -80,7 +80,7 @@ function ProfileSeo({ router, pageProps }: { router: any; pageProps?: any }) {
       }}
       twitter={{
         ...DEFAULT_TWITTER_INFO,
-        images: [ogImageUrl],
+        cardType: "summary_large_image",
       }}
     />
   );
@@ -111,7 +111,7 @@ function CommunitySeo({ router }: { router: any }) {
       }}
       twitter={{
         ...DEFAULT_TWITTER_INFO,
-        images: [img],
+        cardType: "summary_large_image",
       }}
     />
   );
