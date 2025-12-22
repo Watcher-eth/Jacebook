@@ -363,7 +363,7 @@ const photos = React.useMemo(() => {
             {tab === "timeline" && (
               <>
                 {/* CreatePost only on timeline (mobile + desktop) */}
-                <CreatePost />
+                {name === "Jeffrey Epstein" ? <CreatePost /> : null}
 
                 {postsHydrated?.length > 0 ? (
                   postsHydrated.map((p, i) => (
