@@ -105,7 +105,7 @@ export function ProfileHeader(props: {
       <div className="max-w-[1050px] mx-auto px-4 -mt-12 md:-mt-24">
         <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4">
           {/* Left: Avatar */}
-          <div className="border border-border md:-mt-6 md:-top-3 relative rounded-md">
+          <div className=" md:-mt-6 md:-top-3 relative rounded-md">
           <Avatar
             className="
               bg-white border border-6 border-white rounded-md
