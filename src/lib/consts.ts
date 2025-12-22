@@ -11,3 +11,7 @@ export const WORKER_URL = (() => {
   export function isBannedAuthorSlug(slug: string) {
     return BANNED_AUTHOR_SLUGS.has(slug);
   }
+
+
+  export const closeFriends = ["ghislaine-maxwell", "bill-clinton", "mick-jagger", "sarah-duchess-of-york", "les-wexner", "kevin-spacey", "david-copperfield"]
+  

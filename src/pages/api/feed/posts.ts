@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getAllCelebrities, slugifyName } from "@/lib/people";
+import { getAllCelebrities, getCelebrityBySlug, slugifyName } from "@/lib/people";
 import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
 import { isBannedAuthorSlug } from "@/lib/consts";
 import { fetchWikidataProfileByName } from "@/lib/wikidata";
+import { pickLikedBy } from "@/lib/likedBy"
 
 type Appearance = { file: string; page: number; confidence?: number };
 type WithPerson = { name: string; slug: string };
@@ -324,10 +325,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const keysSet = new Set(out.map((p) => p.key));
   const byFile = buildPagePeopleIndex({ allCelebs: all, keysSet });
 
+  
+
   // finalize
   const posts = out.map((p) => {
     const previewPage = Number((p.content.match(/Page (\d+)/)?.[1] ?? "1")) || 1;
 
+    const likedBySlugs = pickLikedBy(p.key, 3);
+
+const likedBy = likedBySlugs.map((slug) => {
+  const c = getCelebrityBySlug(slug);
+  return {
+    slug,
+    name: c?.name ?? slug,
+  };
+});
     const withPeople = coPeopleForPost({
       byFile,
       file: p.key,
@@ -341,6 +353,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return {
       ...p,
+      likedBy,
       authorAvatar: avatarByName.get(p.author) ?? "",
       withPeople,
     };

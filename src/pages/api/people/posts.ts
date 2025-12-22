@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCelebrityBySlug } from "@/lib/people";
 import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
+import { pickLikedBy } from "@/lib/likedBy"
 
 type Appearance = { file: string; page: number; confidence?: number };
 
@@ -94,7 +95,18 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
       const thumbUrl = fileUrl(thumbnailKeyForPdf(key));
       const hqUrl = pageJpegUrlFast(key, previewPage);
 
+          const likedBySlugs = pickLikedBy(key, 3);
+      
+      const likedBy = likedBySlugs.map((slug) => {
+        const c = getCelebrityBySlug(slug);
+        return {
+          slug,
+          name: c?.name ?? slug,
+        };
+      });
+
       return {
+        likedBy,
         key,
         url: fileUrl(key),
         timestamp: FIXED_TIMESTAMP,

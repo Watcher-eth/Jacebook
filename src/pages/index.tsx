@@ -3,7 +3,7 @@ import { FacebookNavbar } from "@/components/layout/navbar";
 import { NewsFeedSidebar } from "@/components/feed/sidebarLeft";
 import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
-import { NewsFeedPost } from "@/components/feed/post";
+import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
 
 type FeedPost = {
   key: string;
@@ -15,6 +15,7 @@ type FeedPost = {
   authorAvatar: string;
   imageUrl?: string;
   hqImageUrl?: string;
+  likedBy?: LikedByPerson[];
 };
 
 function useJson<T>(url: string | null) {
@@ -111,6 +112,7 @@ export default function NewsFeedPage() {
           {posts.map((p, i) => (
             <div key={`${p.authorSlug}::${p.key}`}>
               <NewsFeedPost
+                likedBy={p.likedBy!}
                 author={p.author}
                 authorAvatar={p.authorAvatar || "/placeholder.svg"}
                 timestamp={p.timestamp}

@@ -13,7 +13,7 @@ import { TimelineSection } from "@/components/profile/timeline";
 import { getCelebrityBySlug } from "@/lib/people";
 import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
 
-import { NewsFeedPost } from "@/components/feed/post";
+import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
 import { AboutSection } from "@/components/profile/aboutSection";
 import { PhotoGrid } from "@/components/profile/photoGrid";
 import { FriendGrid } from "@/components/profile/friendGrid";
@@ -30,6 +30,7 @@ type PagePost = {
     imageUrl?: string;    
     hqImageUrl?: string; 
     withPeople?: WithPerson[];
+    likedBy?: LikedByPerson[];
   };
 
 type FriendEdge = {
@@ -218,7 +219,8 @@ const hqUrl = pageJpegUrlFast(key, previewPage);
         authorAvatar: profileAvatarUrl,
         content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
         imageUrl: thumbUrl,      
-        hqImageUrl: hqUrl,        
+        hqImageUrl: hqUrl,   
+             
       
       };
     })
@@ -312,7 +314,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
 const postsHydrated = React.useMemo(() => {
   const map = withRes.data?.withByKey;
   if (!map) return feedPosts;
-  return feedPosts.map((p) => ({ ...p, withPeople: map[p.key] || p.withPeople }));
+  return feedPosts.map((p) => ({ ...p, likedBy: p.likedBy, withPeople: map[p.key] || p.withPeople }));
 }, [feedPosts, withRes.data]);
 
 const photos = React.useMemo(() => {
@@ -361,6 +363,7 @@ const photos = React.useMemo(() => {
                 {postsHydrated.map((p, i) => (
   <div key={p.key}>
     <NewsFeedPost
+    likedBy={p.likedBy}
       author={name}
       authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
       timestamp={p.timestamp}

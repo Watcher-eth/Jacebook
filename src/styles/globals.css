@@ -5,13 +5,13 @@
 
 /* Facebook-themed color palette with classic blue */
 :root {
-  --background: oklch(0.96 0.002 264);
+  --background: #EAE9EE;
   --foreground: oklch(0.2 0.01 264);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.2 0.01 264);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.01 264);
-  --primary: oklch(0.42 0.115 264);
+  --primary: #43609F;
   --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.95 0.005 264);
   --secondary-foreground: oklch(0.35 0.01 264);

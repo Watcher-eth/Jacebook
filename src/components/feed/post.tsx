@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button";
 import { slugifyName } from "@/lib/people"
 
 type WithPerson = { name: string; slug: string };
+export type LikedByPerson = {
+  name: string;
+  slug: string;
+  avatarUrl?: string | null;
+};
 
 function initialsFromName(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -19,9 +24,11 @@ export function NewsFeedPost({
   hqImageUrl,
   priorityImage,
   withPeople,
+  likedBy,
   ...props
 }: {
   author: string;
+  likedBy: LikedByPerson[];
   authorAvatar?: string;
   timestamp: string;
   content: string;
@@ -78,7 +85,7 @@ export function NewsFeedPost({
   return (
     // ✅ IMPORTANT: attach ref here
     <div ref={ref} className="rounded-lg ">
-      <div className="p-3 pb-0 bg-white rounded-lg">
+      <div className="p-3 pb-0 bg-white shadow-b-md rounded-lg">
         <div className="flex items-start justify-between mb-2">
           <div className="flex gap-2 items-center">
             
@@ -144,7 +151,30 @@ export function NewsFeedPost({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mt-2 bg-white/30 p-2">
+      <div className="flex flex-col items-center gap-2 w-full mt-1 bg-[#F6F6F6] p-2">
+      {likedBy && likedBy.length > 0 && (
+  <div className="flex text-sm gap-1 items-center w-full my-1">
+    {likedBy.slice(0, 2).map((p) => (
+      <Link
+        key={p.slug}
+        href={`/${p.slug}`}
+        className="text-primary font-semibold hover:underline"
+      >
+        {p.name}
+      </Link>
+    ))}
+    {likedBy.length > 2 && (
+      <>
+        <span className="text-muted-foreground"> and </span>
+        <span className="text-primary font-semibold">
+          {likedBy.length - 2} others
+        </span>
+      </>
+    )}
+    <span className="text-muted-foreground"> liked this</span>
+  </div>
+)}
+        <div className="flex items-center gap-2 w-full flex-1">
         <Avatar className="h-9 w-9 rounded-sm border-border border">
           <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg" />
           <AvatarFallback className="rounded-sm">JE</AvatarFallback>
@@ -159,6 +189,7 @@ export function NewsFeedPost({
           <button className="absolute right-2 top-1/2 -translate-y-1/2">
             <Camera className="h-5 w-5 text-white fill-gray-400" />
           </button>
+        </div>
         </div>
       </div>
     </div>
