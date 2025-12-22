@@ -105,20 +105,23 @@ export function ProfileHeader(props: {
       <div className="max-w-[1050px] mx-auto px-4 -mt-12 md:-mt-24">
         <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4">
           {/* Left: Avatar */}
+          <div className="border border-border md:-mt-6 md:-top-3 relative rounded-md">
           <Avatar
             className="
-              bg-white border rounded-md
+              bg-white border border-6 border-white rounded-md
               h-[96px] w-[96px]
               md:h-[165px] md:w-[165px]
-              flex-shrink-0 md:-mt-6 md:-top-3 
+              flex-shrink-0 
+              hover:scale-101 transition-all
             "
           >
             {avatarUrl ? (
-              <AvatarImage src={avatarUrl} className="object-cover" />
+              <AvatarImage src={avatarUrl} className="object-cover " />
             ) : (
               <AvatarFallback className="text-3xl">{initials}</AvatarFallback>
             )}
           </Avatar>
+          </div>
 
           {/* Right: Mobile name + Friends button + Tabs */}
           <div className="flex-1 min-w-0">
