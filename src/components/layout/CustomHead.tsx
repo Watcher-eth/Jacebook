@@ -2,7 +2,7 @@ import React from "react";
 import { NextSeo } from "next-seo";
 
 const SITE_URL = "https://jacebook.vercel.app"; 
-const DEFAULT_OG = `${SITE_URL}/PreviewOG.png`; 
+const DEFAULT_OG = `${SITE_URL}/PreviewOg.png`; 
 const DEFAULT_TWITTER_INFO = {
   handle: "@jacebook",
   site: "@jacebook",
