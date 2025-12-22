@@ -103,22 +103,6 @@ export default function NewsFeedPage() {
   }, [cursor, loadingMore]);
 
   return (
-    <>      <Head>
-    <title>Jacebook</title>
-    <meta
-      name="description"
-      content="Discover people, photos, and communities from the Epstein Files."
-    />
-
-    <meta property="og:title" content="Jacebook" />
-    <meta property="og:description" content="Discover people, photos, and communities from the Epstein Files." />
-    <meta property="og:image" content="../PreviewOg.png" />
-
-    <meta name="twitter:title" content="Jacebook" />  
-    <meta name="twitter:image" content="../PreviewOg.png" />
-  </Head>
-
-
     <div className="min-h-screen bg-background">
       <FacebookNavbar />
 
@@ -151,6 +135,5 @@ export default function NewsFeedPage() {
         <NewsFeedRightSidebar />
       </div>
     </div>
-    </>
   );
 }
