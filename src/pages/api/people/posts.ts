@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getCelebrityBySlug } from "@/lib/people";
 import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
 import { pickLikedBy } from "@/lib/likedBy"
+import { LikedByPerson } from "@/components/feed/post"
 
 type Appearance = { file: string; page: number; confidence?: number };
 
@@ -13,9 +14,10 @@ type PagePost = {
   authorAvatar: string;
   imageUrl?: string;
   hqImageUrl?: string;
+  likedBy?: LikedByPerson[];
 };
 
-const MIN_CONF = 99.7;
+const MIN_CONF = 98;
 const FIXED_TIMESTAMP = "Dec 19, 2025";
 
 function conf(a: Appearance) {

@@ -18,35 +18,22 @@ export function NewsFeedSidebar() {
       </Link>
 
       {/* News Feed */}
-      <button className="flex items-center gap-0.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <div className="h-5 w-5 bg-primary rounded flex items-center justify-center">
-            <svg className="h-3 w-3 text-primary-foreground" fill="currentColor" viewBox="0 0 16 16">
-              <rect x="2" y="2" width="5" height="5" />
-              <rect x="9" y="2" width="5" height="5" />
-              <rect x="2" y="9" width="5" height="5" />
-              <rect x="9" y="9" width="5" height="5" />
-            </svg>
-          </div>
-        </div>
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+          <img src="./icons/Feed.png" className="h-4.5 w-4.5 rounded flex items-center justify-center"/>
         <span className="text-sm font-semibold text-foreground">News Feed</span>
         <ChevronDown className="h-4 w-4 ml-auto text-muted-foreground" />
       </button>
 
       {/* Messages */}
-      <button className="flex items-center gap-0.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <MessageSquare className="h-5 w-5 text-muted-foreground" />
-        </div>
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/Messages.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
         <span className="text-sm font-medium text-foreground">Messages</span>
         <span className="ml-auto text-xs font-semibold text-muted-foreground">1</span>
       </button>
 
       {/* Events */}
-      <button className="flex items-center gap-0.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-        </div>
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/Calendar.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
         <span className="text-sm font-medium text-foreground">Events</span>
       </button>
 
@@ -56,39 +43,35 @@ export function NewsFeedSidebar() {
       </div>
 
       {/* Lunch Crew */}
-      <button className="flex items-center gap-0.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <div className="h-5 w-5 rounded overflow-hidden">
-            <img src="/colorful-food.png" alt="" className="h-full w-full object-cover" />
-          </div>
-        </div>
-        <span className="text-sm font-medium text-foreground">Lunch Crew</span>
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/Globe.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
+        <span className="text-sm font-medium text-foreground">Vacations</span>
+      </button>
+     
+      {/* Politicians */}
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/USA.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
+        <span className="text-sm font-medium text-foreground">Politicians</span>
+        <span className="ml-auto text-xs font-semibold text-muted-foreground">4</span>
       </button>
 
-      {/* Science 101 */}
-      <button className="flex items-center gap-3 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <div className="h-5 w-5 rounded overflow-hidden">
-            <img src="/science-atoms.jpg" alt="" className="h-full w-full object-cover" />
-          </div>
-        </div>
-        <span className="text-sm font-medium text-foreground">Science 101</span>
+      {/* Celebs */}
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/Film.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
+        <span className="text-sm font-medium text-foreground">Celebrities</span>
+        <span className="ml-auto text-xs font-semibold text-muted-foreground">7</span>
       </button>
 
-      {/* Mystic Camping */}
-      <button className="flex items-center gap-3 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <TreePine className="h-5 w-5 text-green-600" />
-        </div>
-        <span className="text-sm font-medium text-foreground">Mystic Camping</span>
-        <span className="ml-auto text-xs font-semibold text-muted-foreground">2</span>
+       {/* Business */}
+       <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/Work.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
+        <span className="text-sm font-medium text-foreground">Business</span>
+        <span className="ml-auto text-xs font-semibold text-muted-foreground">12</span>
       </button>
 
       {/* Create Group */}
-      <button className="flex items-center gap-3 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
-        <div className="h-6 w-6 flex items-center justify-center">
-          <Plus className="h-5 w-5 text-muted-foreground" />
-        </div>
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+        <img src="./icons/FriendsPlus.png" className="h-4.5 w-4.5  rounded flex items-center justify-center"/>
         <span className="text-sm font-medium text-foreground">Create Group...</span>
       </button>
 
@@ -98,11 +81,9 @@ export function NewsFeedSidebar() {
       </div>
 
       {/* Close Friends */}
-      <button className="flex items-center gap-3 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
+      <button className="flex items-center hover:scale-101 gap-1.5 px-2 py-1.5 w-full hover:bg-muted/50 rounded group">
         <div className="h-6 w-6 flex items-center justify-center">
-          <div className="h-5 w-5 rounded overflow-hidden">
-            <img src="/star-icon.png" alt="" className="h-full w-full object-cover" />
-          </div>
+            <img src="./icons/Photos.png" alt="" className="h-full h-4.5 w-4.5  w-full object-cover" />
         </div>
         <span className="text-sm font-medium text-foreground">Close Friends</span>
       </button>

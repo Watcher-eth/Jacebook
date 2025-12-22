@@ -42,10 +42,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const friends = buildFriendsForPerson({
       ownerSlug: slug,
       allCelebs,
-      minConf: 99.7,
+      minConf: 99,
       manifest: null,
-      minConfOwner: 99.3,
-      minConfOther: 99.0,
+      minConfOwner: 99,
+      minConfOther: 99,
       pageWindow: 1,
       minEdgeWeight: 1,
       limit: 48,

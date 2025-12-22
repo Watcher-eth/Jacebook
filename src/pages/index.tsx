@@ -112,7 +112,7 @@ export default function NewsFeedPage() {
           {posts.map((p, i) => (
             <div key={`${p.authorSlug}::${p.key}`}>
               <NewsFeedPost
-                likedBy={p.likedBy!}
+                likedBy={p.likedBy ?? []}
                 author={p.author}
                 authorAvatar={p.authorAvatar || "/placeholder.svg"}
                 timestamp={p.timestamp}

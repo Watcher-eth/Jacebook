@@ -129,7 +129,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverAnchor asChild>
-        <div className={cn("relative w-96", props.className)}>
+        <div className={cn("relative w-120", props.className)}>
           <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
             ref={inputRef}

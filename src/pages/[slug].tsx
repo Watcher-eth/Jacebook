@@ -220,7 +220,7 @@ const hqUrl = pageJpegUrlFast(key, previewPage);
         content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
         imageUrl: thumbUrl,      
         hqImageUrl: hqUrl,   
-             
+
       
       };
     })
@@ -360,10 +360,10 @@ const photos = React.useMemo(() => {
             {tab === "timeline" && (
               <>
                 <CreatePost />
-                {postsHydrated.map((p, i) => (
+                {postsHydrated?.length > 0 ? postsHydrated.map((p, i) => (
   <div key={p.key}>
     <NewsFeedPost
-    likedBy={p.likedBy}
+      likedBy={p.likedBy ?? []}
       author={name}
       authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
       timestamp={p.timestamp}
@@ -374,7 +374,9 @@ const photos = React.useMemo(() => {
       priorityImage={i === 0}
     />
   </div>
-))}
+)) : (
+  <div className="text-center text-lg text-muted-foreground py-4">No posts found</div>
+)}
 
 <div ref={loadRef} className="h-10" />
 

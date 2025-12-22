@@ -50,12 +50,13 @@ export function ProfileHeader(props: {
     );
   };
 
+  console.log("cover", coverUrl, coverUrl.length)
   return (
     <div className="bg-card">
       {/* Full-bleed cover */}
       <div className="relative w-full bg-muted">
         <div className="relative h-[315px] w-full">
-          <img src={coverUrl} alt="Cover" className="h-full w-full object-cover" />
+          {coverUrl.length > 10 ? <img src={ coverUrl } alt="Cover" className="h-full w-full object-cover" /> : <div className="h-full w-full bg-primary" />}
 
           {/* Optional dark gradient for readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />

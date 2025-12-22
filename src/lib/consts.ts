@@ -13,5 +13,5 @@ export const WORKER_URL = (() => {
   }
 
 
-  export const closeFriends = ["ghislaine-maxwell", "bill-clinton", "mick-jagger", "sarah-duchess-of-york", "les-wexner", "kevin-spacey", "david-copperfield"]
+  export const closeFriends = ["ghislaine-maxwell", "bill-clinton", "mick-jagger", "sarah-duchess-of-york", "les-wexner", "kevin-spacey", "david-copperfield", "peter-mandelson", "william-daniel-hillis"]
   

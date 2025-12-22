@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, ChevronDown, Users, UserPlus } from "lucide-react"
+import Link from "next/link"
 
 export function NewsFeedRightSidebar() {
   return (
@@ -8,20 +9,16 @@ export function NewsFeedRightSidebar() {
       {/* Events Section */}
       <div className="bg-white py-3">
       <div className="px-3 bg-white pb-2" >
-        <div className="flex items-center gap-2 mb-2">
-          <div className="h-5 w-5 bg-[#ed4956] rounded flex items-center justify-center text-white text-xs font-bold">
-            <span>📅</span>
-          </div>
+        <div className="flex items-center gap-1.5 mb-2">
+          <img src="./icons/Gift.png" className="h-5 w-5 rounded flex items-center justify-center"/>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground">
-              <span className="text-primary hover:underline cursor-pointer">Alex Ristevski</span> and 1 other
+              <Link href="/ghislaine-maxwell" className="text-primary hover:underline cursor-pointer">Ghislaine Maxwell</Link> and 1 other
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-5 bg-[#ed4956] rounded flex items-center justify-center text-white text-xs font-bold">
-          📅
-          </div>
+          <img src="./icons/Calendar.png" className="h-5 w-5 rounded flex items-center justify-center"/>
           <div>
             <p className="text-sm">
               <span className="font-semibold text-primary hover:underline cursor-pointer">2 events</span> this week
@@ -41,8 +38,8 @@ export function NewsFeedRightSidebar() {
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm">
-                <span className="font-semibold text-primary hover:underline cursor-pointer">Paul Rudd:</span>{" "}
-                <span className="text-muted-foreground">Lip Sync Battle with Paul Rudd</span>
+                <Link href="https://www.bbc.com/news/live/cwyk526vlnlt" className="font-semibold text-primary hover:underline cursor-pointer">Epstein victims and lawmakers</Link>{" "}
+                <span className="text-muted-foreground">criticise number of files released and redactions</span>
               </p>
             </div>
           </div>
@@ -50,8 +47,9 @@ export function NewsFeedRightSidebar() {
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm">
-                <span className="font-semibold text-primary hover:underline cursor-pointer">Ben & Jerry's:</span>{" "}
-                <span className="text-muted-foreground">Ben and Jerry's Announces Four New 'Core' Flavors</span>
+                <span className="text-muted-foreground">How</span>{" "}
+                <Link href="/bill-clinton" className="font-semibold text-primary hover:underline cursor-pointer">Bill Clinton</Link>{" "}
+                <span className="text-muted-foreground">became the focus of the Epstein files</span>
               </p>
             </div>
           </div>
@@ -59,8 +57,11 @@ export function NewsFeedRightSidebar() {
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div>
               <p className="text-sm">
-                <span className="font-semibold text-primary hover:underline cursor-pointer">Paco de Lucía:</span>{" "}
-                <span className="text-muted-foreground">Renowned Spanish flamenco guitarist Paco de Lucia dies</span>
+                <span className="text-muted-foreground">Photo of</span>{" "}
+                <Link href="/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">President Trump</Link>{" "}
+                <span className="text-muted-foreground">and</span>{" "}
+                <Link href="/donald-trump" className="font-semibold text-primary hover:underline cursor-pointer">First Lady Melania Trump</Link>{" "}
+                <span className="text-muted-foreground">reuploaded by the DoJ</span>
               </p>
             </div>
           </div>
@@ -79,52 +80,52 @@ export function NewsFeedRightSidebar() {
         </div>
         <div className="space-y-3 px-3">
           {/* Greg Marra */}
-          <div className="flex items-center gap-2">
+          <Link href="/ted-waitt" className="flex items-center gap-2">
             <Avatar className="h-12 w-12 rounded-sm">
-              <AvatarImage src="/diverse-woman-smiling.png" />
-              <AvatarFallback className="rounded-sm">GM</AvatarFallback>
+              <AvatarImage className="rounded-sm object-cover" src="https://jacebook-worker.jacebook.workers.dev/pdfs-as-jpegs/VOL00002/IMAGES/0001/EFTA00003383/page-001.jpg?v=20251221" />
+              <AvatarFallback className="rounded-sm">BC</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Greg Marra</p>
-              <p className="text-xs text-muted-foreground">12 mutual friends</p>
+              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Ted Waitt</p>
+              <p className="text-xs text-muted-foreground">7 mutual friends</p>
             </div>
-            <Button size="sm" variant="outline" className="h-7 text-xs text-gray-500 border-gray-300 bg-gray-50 font-semibold">
+            <Button size="sm" variant="outline" className="h-7 hover:scale-[1.01] hover:gray-400 text-xs text-gray-500 border-gray-300 bg-gray-50 font-semibold">
               <UserPlus className="h-3 w-3 mr-0 fill-gray-500" />
               Add Friend
             </Button>
-          </div>
+          </Link>
 
           {/* Mike Rumble */}
-          <div className="flex items-center gap-2">
+          <Link href="/mick-jagger" className="flex  items-center gap-2">
             <Avatar className="h-12 w-12 rounded-sm">
-              <AvatarImage src="/man-with-sunglasses.png" />
-              <AvatarFallback className="rounded-sm">MR</AvatarFallback>
+              <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Rolling_Stones_04.jpg" />
+              <AvatarFallback className="rounded-sm">MJ</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Mike Rumble</p>
-              <p className="text-xs text-muted-foreground">5 mutual friends</p>
+              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Mick Jagger</p>
+              <p className="text-xs text-muted-foreground">3 mutual friends</p>
             </div>
-            <Button size="sm" variant="outline" className="h-7 text-xs border-gray-300 bg-gray-50 text-gray-500 font-semibold">
+            <Button size="sm" variant="outline" className="h-7 hover:scale-[1.01] hover:gray-400 text-xs border-gray-300 bg-gray-50 text-gray-500 font-semibold">
               <UserPlus className="h-3 w-3 mr-0 fill-gray-500 " />
               Add Friend
             </Button>
-          </div>
+          </Link>
 
           {/* Julie Zhuo */}
-          <div className="flex items-center gap-2 ">
+          <Link href="/chris-tucker" className="flex items-center gap-2 ">
             <Avatar className="h-12 w-12 rounded-sm">
-              <AvatarImage src="/professional-woman-diverse.png rounded-sm" />
+              <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Chris_Tucker_by_Gage_Skidmore.jpg" />
               <AvatarFallback className="rounded-sm">JZ</AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Julie Zhuo</p>
-              <p className="text-xs text-muted-foreground">8 mutual friends</p>
+              <p className="text-sm font-semibold text-primary hover:underline cursor-pointer">Chris Tucker</p>
+              <p className="text-xs text-muted-foreground">2 mutual friends</p>
             </div>
-            <Button size="sm" variant="outline" className="h-7 bg-gray-50 border-gray-300 text-xs text-gray-500 font-semibold ">
+            <Button size="sm" variant="outline" className="h-7 hover:scale-[1.01] hover:gray-400 text-xs border-gray-300 bg-gray-50 text-gray-500 font-semibold ">
               <UserPlus className="h-3 w-3 mr-0 fill-gray-500 " />
               Add Friend
             </Button>
-          </div>
+          </Link>
         </div>
       </div>
       </div>
@@ -132,8 +133,8 @@ export function NewsFeedRightSidebar() {
       {/* Footer */}
       <div className="border-t pt-3 px-3 ">
         <p className="text-xs text-muted-foreground">
-          English (US) · Privacy · Terms · Cookies · More ·<br />
-          Facebook © 2014
+          English (US) · DoJ Release · Credits · More <br />
+          Jacebook © 2025
         </p>
       </div>
     </aside>

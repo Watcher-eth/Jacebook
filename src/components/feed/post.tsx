@@ -144,10 +144,10 @@ export function NewsFeedPost({
           />
         </div>
 
-        <div className="flex gap-2 items-center mt-1.5 -mb-1.5">
-          <div className="h-7 text-xs text-primary hover:text-foreground">Like</div>
-          <div className="h-7 text-xs text-primary hover:text-foreground">Comment</div>
-          <div className="h-7 text-xs text-primary hover:text-foreground">Share</div>
+        <div className="flex gap-2 items-center  -mb-1 -ml-0.5">
+          <div className="h-7 text-sm text-primary hover:font-semibold">Like</div>
+          <div className="h-7 text-sm text-primary hover:font-semibold">Comment</div>
+          <div className="h-7 text-sm text-primary hover:font-semibold">Share</div>
         </div>
       </div>
 
@@ -160,7 +160,7 @@ export function NewsFeedPost({
         href={`/${p.slug}`}
         className="text-primary font-semibold hover:underline"
       >
-        {p.name}
+        {p.name},
       </Link>
     ))}
     {likedBy.length > 2 && (
