@@ -60,10 +60,19 @@ export default function CommunityPage() {
   return (
     <div className="min-h-screen bg-background">
       <Head>
-        <title>{title}</title>
-        <meta name="description" content={type ? `Community page for ${type}` : "Community page"} />
-      </Head>
+    <title>Jacebook</title>
+    <meta
+      name="description"
+      content={`${title} • Jacebook`}
+    />
 
+    <meta property="og:title" content="Jacebook" />
+    <meta property="og:description" content={`${title} • Jacebook`} />
+    <meta property="og:image" content="../PreviewOg.png" />
+
+    <meta name="twitter:title" content="Jacebook" />  
+    <meta name="twitter:image" content="../PreviewOg.png" />
+  </Head>
       <FacebookNavbar />
 
       <div className="max-w-[1050px] mx-auto flex gap-3">

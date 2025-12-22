@@ -332,6 +332,20 @@ const photos = React.useMemo(() => {
 
   return (
     <div className="min-h-screen bg-background font-sans">
+        <Head>
+    <title>{name}</title>
+    <meta
+      name="description"
+      content={`See ${name} on Jacebook`}
+    />
+
+    <meta property="og:title" content="Jacebook" />
+    <meta property="og:description" content={`See ${name} on Jacebook`}/>
+    <meta property="og:image" content="../PreviewOg.png" />
+
+    <meta name="twitter:title" content="Jacebook" />  
+    <meta name="twitter:image" content="../PreviewOg.png" />
+  </Head>
       <Head>
         <title>{`${name} • Jacebook`}</title>
         <meta name="description" content={`Documents where ${name} appears (${count} total appearances)`} />
