@@ -29,7 +29,7 @@ export function FacebookNavbar() {
               href="/u/jeffrey-epstein"
               className="flex items-center gap-1.5 text-sm font-medium hover:bg-primary-foreground/5 hover:text-white rounded-md px-1.5 py-1"
             >
-              <Avatar className="h-6 w-6">
+              <Avatar className="h-6 w-6 border-2 border-white">
                 <AvatarImage
                   className="object-cover"
                   src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg"
@@ -38,7 +38,7 @@ export function FacebookNavbar() {
               </Avatar>
 
               {/* Hide name on mobile, show on md+ */}
-              <span className="hidden md:inline text-sm">Jeffrey</span>
+              <span className="hidden md:inline text-sm font-semibold">Jeffrey</span>
             </Link>
 
             {/* Hide Home + icons on mobile */}
