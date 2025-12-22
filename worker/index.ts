@@ -1,6 +1,4 @@
-interface Env {
-    R2_BUCKET: R2Bucket;
-  }
+
   
   function getFileId(key: string): string {
     const match = key.match(/EFTA\d+/);
@@ -52,7 +50,7 @@ interface Env {
   
   
   export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: any): Promise<Response> {
       const url = new URL(request.url);
       const path = url.pathname.slice(1); // Remove leading slash
   
@@ -175,7 +173,7 @@ interface Env {
         let bucketCursor: string | undefined = undefined;
   
         while (hasMoreInBucket) {
-          const listOptions: R2ListOptions = {
+          const listOptions: any = {
             limit: 1000,
           };
           
@@ -226,7 +224,7 @@ interface Env {
         let isFirstRequest = true;
   
         while (files.length <= limit && hasMoreInBucket) {
-          const listOptions: R2ListOptions = {
+          const listOptions: any = {
             prefix,
             limit: 1000,
           };
