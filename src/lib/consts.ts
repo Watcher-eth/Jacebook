@@ -5,7 +5,7 @@ export const WORKER_URL = (() => {
   })();
 
   export const BANNED_AUTHOR_SLUGS = new Set<string>([
-    "jeffrey-epstein", "albert-einstein", "marilyn-monroe", "emily-elizabeth-dickinson"
+    "jeffrey-epstein", "albert-einstein", "marilyn-monroe", "emily-elizabeth-dickinson", "william-butler-yeats"
   ]);
   
   export function isBannedAuthorSlug(slug: string) {

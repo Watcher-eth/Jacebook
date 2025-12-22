@@ -91,7 +91,7 @@ function CommunitySeo({ router }: { router: any }) {
   const pretty = type ? titleCase(type) : "Community";
 
   const title = `Jacebook`;
-  const description = `Explore ${pretty} on Jacebook`;
+  const description = `Communities on Jacebook`;
 
   const url = `${SITE_URL}/c/${encodeURIComponent(type)}`;
   const img = DEFAULT_OG;
