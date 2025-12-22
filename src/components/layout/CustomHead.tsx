@@ -30,7 +30,7 @@ export function CustomHead({ router, pageProps }: { router: any; pageProps?: any
 
 function HomeSeo() {
   const title = "Jacebook";
-  const description = "Explore documents, people, and communities.";
+  const description = "Explore photos, people, and communities from the Epstein files.";
   const ogImageUrl = DEFAULT_OG;
 
   return (

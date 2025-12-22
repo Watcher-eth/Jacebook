@@ -152,28 +152,36 @@ export function NewsFeedPost({
       </div>
 
       <div className="flex flex-col items-center gap-2 w-full mt-1 bg-[#F6F6F6] p-2">
-      {likedBy && likedBy.length > 0 && (
-  <div className="flex text-sm gap-1 items-center w-full my-1">
-    {likedBy.slice(0, 2).map((p) => (
-      <Link
-        key={p.slug}
-        href={`/u/${p.slug}`}
-        className="text-primary font-semibold hover:underline"
-      >
-        {p.name},
-      </Link>
-    ))}
-    {likedBy.length > 2 && (
-      <>
-        <span className="text-muted-foreground"> and </span>
-        <span className="text-primary font-semibold">
-          {likedBy.length - 2} others
-        </span>
-      </>
-    )}
-    <span className="text-muted-foreground"> liked this</span>
+      {likedBy?.length ? (
+  <div className="w-full my-1">
+    <p className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm leading-tight">
+      {likedBy.slice(0, 2).map((p, idx) => (
+        <React.Fragment key={p.slug}>
+          <Link
+            href={`/u/${p.slug}`}
+            className="text-primary font-semibold hover:underline"
+          >
+            {p.name}
+          </Link>
+          {idx < Math.min(likedBy.length, 2) - 1 ? (
+            <span className="text-muted-foreground">,</span>
+          ) : null}
+        </React.Fragment>
+      ))}
+
+      {likedBy.length > 2 ? (
+        <>
+          <span className="text-muted-foreground">and</span>
+          <span className="text-primary font-semibold whitespace-nowrap">
+            {Math.floor(Math.random() * 10) + 1} others
+          </span>
+        </>
+      ) : null}
+
+      <span className="text-muted-foreground whitespace-nowrap">liked this</span>
+    </p>
   </div>
-)}
+) : null}
         <div className="flex items-center gap-2 w-full flex-1">
         <Avatar className="h-9 w-9 rounded-sm border-border border">
           <AvatarImage className="rounded-sm object-cover" src="https://commons.wikimedia.org/wiki/Special:FilePath/Epstein_2013_mugshot.jpg" />
