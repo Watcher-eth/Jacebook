@@ -1,7 +1,7 @@
 // pages/api/people/friends.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAllCelebrities } from "@/lib/people";
-import { buildFriendsForPerson, type FriendEdge } from "@/lib/friends-graph";
+import { buildFriendsForPerson, type FriendEdge } from "@/lib/friendsGraph";
 import { createTtlCache } from "@/lib/apiCache";
 
 const cache = createTtlCache<FriendEdge[]>();

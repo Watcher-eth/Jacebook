@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import type { FriendEdge } from "@/lib/friends-graph";
+import type { FriendEdge } from "@/lib/friendsGraph";
 import { UserCheck } from "lucide-react"
 
 function initialsFromName(name: string) {

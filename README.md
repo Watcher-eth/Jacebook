@@ -1,40 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
+Jacebook
 
-## Getting Started
+Jacebook is a Next.js + Tailwind web app that reconstructs people, relationships, and events from document appearances (PDFs), with a Facebook-style feed, profiles, and communities.
 
-First, run the development server:
+The system is intentionally read-only, deterministic, and cache-heavy, optimized for fast SSR and CDN delivery.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+High-level Architecture
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Documents (PDFs and JPGs in R2)
+        ↓
+Cloudflare Worker
+        ↓
+Next.js API routes (cached)
+        ↓
+Next.js pages (SSR + client hydration)
 
-You can start editing the page by modifying `pages/index.tsx`. The page auto-updates as you edit the file.
+Key principles
+	•	No database — everything derives from static celebrity data + document appearances
+	•	Deterministic outputs (same input → same feed, likes, ordering)
+	•	Aggressive caching at every layer (Worker, API routes, browser)
+	•	Fast SSR with minimal blocking work
 
-[API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+Repo Structure
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/pages/building-your-application/routing/api-routes) instead of React pages.
+/src/pages – Routing & API
 
-This project uses [`next/font`](https://nextjs.org/docs/pages/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Pages
+	•	/ – Main feed
+	•	/u/[slug] – Person profile (timeline / about / friends / photos)
+	•	/c/[filter] – Community pages
 
-## Learn More
+API Routes
+All API routes are pure functions + in-memory TTL cache.
+	•	/api/feed/posts
+→ Global feed (interleaved across authors, deterministic shuffle)
+	•	/api/people/posts
+→ Posts for a single person (used by profile infinite scroll)
+	•	/api/people/with-people
+→ Co-appearance logic (“with X, Y”)
+Expensive logic → heavily cached
+	•	/api/people/friends
+→ Friends graph based on co-occurrence
+	•	/api/people/wikidata
+→ Wikidata enrichment (name, image)
+	•	/api/people/c
+→ Community → people mapping
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn-pages-router) - an interactive Next.js tutorial.
+/src/lib – Core Logic
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Important files
 
-## Deploy on Vercel
+celebrityData.ts
+	•	Canonical dataset
+	•	Contains:
+	•	Names
+	•	Appearances { file, page, confidence }
+	•	Treated as source of truth
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+people.ts
+	•	Slug logic
+	•	Precomputed indexes
+	•	Avatar selection
+	•	Search helpers
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/pages/building-your-application/deploying) for more details.
+⚠️ Runs at module init — keep it fast.
+
+friendsGraph.ts
+Builds the friends network:
+	•	Co-appearance based
+	•	Weighted edges
+	•	Windowed by page distance
+
+This is CPU-heavy, so always cached upstream.
+
+likedBy.ts
+Fake but deterministic likes:
+	•	Seeded RNG
+	•	Stable per post key
+	•	Never random at runtime
+
+
+worker-client.ts
+Client for the Cloudflare Worker
+	•	Builds file URLs
+	•	PDF → image resolution
+	•	SSR-safe fetch cache
+
+⚠️ No direct R2 access from Next.js.
+
+/worker – Cloudflare Worker
+	•	Serves files from R2
+	•	Generates thumbnails / page images
+	•	Exposes:
+	•	/api/files-by-keys
+	•	/api/pdf-manifest
+
+This is intentionally dumb and fast.
+
+Components
+
+Feed
+	•	NewsFeedPost is image-heavy but optimized
+	•	Thumb → HQ upgrade via IntersectionObserver
+	•	No next/image on purpose (Worker URLs)
+
+Profile
+	•	Tabs are UI-only (no routing)
+	•	Mobile behavior differs intentionally
+	•	Wikidata loads client-side to keep SSR fast
+
+Caching Strategy (Important)
+
+Server
+	•	In-memory TTL caches (Map)
+	•	De-duped inflight requests
+	•	CDN headers set on all API routes
+
+CDN
+	•	s-maxage
+	•	stale-while-revalidate
+
+Client
+	•	Infinite scroll uses cursor-based pagination
+	•	No refetching already seen items
+
+⚠️ If you add new API routes, copy the caching pattern.
