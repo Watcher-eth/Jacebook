@@ -7,18 +7,18 @@ export function createTtlCache<T>() {
 
   const now = () => Date.now();
 
-  function get(k: string) {
+  function get(k: string): T | null {
     const e = cache.get(k);
     if (e && e.exp > now()) return e.v;
     return null;
   }
 
-  function set(k: string, v: T, ttlMs: number) {
+  function set(k: string, v: T, ttlMs: number): T {
     cache.set(k, { exp: now() + ttlMs, v });
     return v;
   }
 
-  async function once(k: string, fn: () => Promise<T>) {
+  async function once(k: string, fn: () => Promise<T>): Promise<T> {
     const p0 = inflight.get(k);
     if (p0) return p0;
     const p = fn().finally(() => inflight.delete(k));

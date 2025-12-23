@@ -1,9 +1,9 @@
 import { Users, MessageCircle, Bell, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PeopleSearchPopover } from "./searchPopover";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PeopleSearchPopover } from "./SearchPopover"
 
 export function FacebookNavbar() {
   const router = useRouter();

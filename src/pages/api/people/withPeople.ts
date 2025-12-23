@@ -1,11 +1,13 @@
 // pages/api/people/withPeople.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAllCelebrities, slugifyName } from "@/lib/people";
-import { chooseBestPage, conf } from "@/lib/appearances"
+import { chooseBestPage, conf } from "@/lib/appearances";
+import { createTtlCache } from "@/lib/apiCache";
 
 type Appearance = { file: string; page: number; confidence?: number };
 type WithPerson = { name: string; slug: string };
 
+const cache = createTtlCache<Record<string, WithPerson[]>>();
 
 function buildPagePeopleIndex(args: {
   allCelebs: ReturnType<typeof getAllCelebrities>;
@@ -76,23 +78,6 @@ function coPeopleForPost(args: {
     .map(([s]) => ({ slug: s, name: slugToName.get(s) ?? s }));
 }
 
-type CacheEntry<T> = { exp: number; v: T };
-const cache = new Map<string, CacheEntry<Record<string, WithPerson[]>>>();
-const inflight = new Map<string, Promise<Record<string, WithPerson[]>>>();
-
-function now() {
-  return Date.now();
-}
-function getCached(k: string) {
-  const e = cache.get(k);
-  if (e && e.exp > now()) return e.v;
-  return null;
-}
-function setCached(k: string, v: Record<string, WithPerson[]>, ttlMs: number) {
-  cache.set(k, { exp: now() + ttlMs, v });
-  return v;
-}
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const ownerSlug = String(req.query.slug || "").trim();
   const keysRaw = String(req.query.keys || "").trim();
@@ -105,16 +90,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=86400");
 
   const k = `with:${ownerSlug}:${keys.join("|")}`;
-  const cached = getCached(k);
-  if (cached) return res.status(200).json({ withByKey: cached });
 
-  const p0 = inflight.get(k);
-  if (p0) {
-    const withByKey = await p0;
-    return res.status(200).json({ withByKey });
-  }
+  const hit = cache.get(k);
+  if (hit) return res.status(200).json({ withByKey: hit });
 
-  const p = (async () => {
+  const withByKey = await cache.once(k, async () => {
     const allCelebs = getAllCelebrities();
 
     const slugToName = new Map<string, string>();
@@ -123,8 +103,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const keysSet = new Set(keys);
     const byFile = buildPagePeopleIndex({ allCelebs, keysSet });
 
-    const withByKey: Record<string, WithPerson[]> = {};
+    const out: Record<string, WithPerson[]> = {};
     const owner = allCelebs.find((c) => slugifyName(c.name) === ownerSlug);
+
     const ownerApps = (owner?.appearances as any as Appearance[]) || [];
     const ownerHi = ownerApps.filter((a) => (a.confidence ?? 0) >= 99.7);
 
@@ -138,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     for (const file of keys) {
       const apps = ownerByFile.get(file) || [];
       const page = chooseBestPage(apps);
-      withByKey[file] = coPeopleForPost({
+      out[file] = coPeopleForPost({
         byFile,
         file,
         page,
@@ -150,10 +131,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    return setCached(k, withByKey, 30 * 60_000);
-  })().finally(() => inflight.delete(k));
+    return cache.set(k, out, 30 * 60_000);
+  });
 
-  inflight.set(k, p);
-  const withByKey = await p;
   return res.status(200).json({ withByKey });
 }

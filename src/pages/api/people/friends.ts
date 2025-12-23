@@ -2,23 +2,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAllCelebrities } from "@/lib/people";
 import { buildFriendsForPerson, type FriendEdge } from "@/lib/friends-graph";
+import { createTtlCache } from "@/lib/apiCache";
 
-type CacheEntry<T> = { exp: number; v: T };
-const cache = new Map<string, CacheEntry<FriendEdge[]>>();
-const inflight = new Map<string, Promise<FriendEdge[]>>();
-
-function now() {
-  return Date.now();
-}
-function getCached(k: string) {
-  const e = cache.get(k);
-  if (e && e.exp > now()) return e.v;
-  return null;
-}
-function setCached(k: string, v: FriendEdge[], ttlMs: number) {
-  cache.set(k, { exp: now() + ttlMs, v });
-  return v;
-}
+const cache = createTtlCache<FriendEdge[]>();
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const slug = String(req.query.slug || "").trim();
@@ -27,18 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=86400");
 
   const k = `friends:${slug}`;
-  const cached = getCached(k);
-  if (cached) return res.status(200).json({ friends: cached });
 
-  const p0 = inflight.get(k);
-  if (p0) {
-    const friends = await p0;
-    return res.status(200).json({ friends });
-  }
+  const hit = cache.get(k);
+  if (hit) return res.status(200).json({ friends: hit });
 
-  const p = (async () => {
+  const friends = await cache.once(k, async () => {
     const allCelebs = getAllCelebrities();
-    const friends = buildFriendsForPerson({
+    const v = buildFriendsForPerson({
       ownerSlug: slug,
       allCelebs,
       minConf: 99,
@@ -49,10 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       minEdgeWeight: 1,
       limit: 48,
     });
-    return setCached(k, friends, 30 * 60_000);
-  })().finally(() => inflight.delete(k));
+    return cache.set(k, v, 30 * 60_000);
+  });
 
-  inflight.set(k, p);
-  const friends = await p;
   return res.status(200).json({ friends });
 }

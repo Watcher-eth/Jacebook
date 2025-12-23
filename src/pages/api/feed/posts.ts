@@ -5,6 +5,7 @@ import { isBannedAuthorSlug } from "@/lib/consts";
 import { fetchWikidataProfileByName } from "@/lib/wikidata";
 import { pickLikedBy } from "@/lib/likedBy"
 import { chooseBestPage, conf } from "@/lib/appearances"
+import { createTtlCache } from "@/lib/apiCache"
 
 type Appearance = { file: string; page: number; confidence?: number };
 type WithPerson = { name: string; slug: string };
@@ -66,39 +67,19 @@ function shuffleInPlace<T>(arr: T[], rand: () => number) {
   return arr;
 }
 
-function now() {
-  return Date.now();
-}
-type CacheEntry<T> = { exp: number; v: T };
-function getCache<T>(m: Map<string, CacheEntry<T>>, k: string) {
-  const e = m.get(k);
-  if (e && e.exp > now()) return e.v;
-  return null;
-}
-function setCache<T>(m: Map<string, CacheEntry<T>>, k: string, v: T, ttlMs: number) {
-  m.set(k, { exp: now() + ttlMs, v });
-  return v;
-}
-const inflight = new Map<string, Promise<any>>();
-async function once<T>(key: string, fn: () => Promise<T>) {
-  const p = inflight.get(key);
-  if (p) return p as Promise<T>;
-  const q = fn().finally(() => inflight.delete(key));
-  inflight.set(key, q);
-  return q;
-}
 
-const avatarCache = new Map<string, CacheEntry<string | null>>();
+const avatarCache = createTtlCache<string | null>();
 
 async function getAvatarForName(name: string): Promise<string> {
-  const k = name;
-  const cached = getCache(avatarCache, k);
-  if (cached !== null) return cached || "";
+  const k = `wd-avatar:${name}`;
 
-  const v = await once(`wd-avatar:${k}`, async () => {
-    const wd = await fetchWikidataProfileByName(k).catch(() => null);
+  const hit = avatarCache.get(k);
+  if (hit !== null && hit !== undefined) return hit || "";
+
+  const v = await avatarCache.once(k, async () => {
+    const wd = await fetchWikidataProfileByName(name).catch(() => null);
     const img = (wd as any)?.imageUrl;
-    return setCache(avatarCache, k, typeof img === "string" ? img : null, 24 * 60 * 60_000);
+    return avatarCache.set(k, typeof img === "string" ? img : null, 24 * 60 * 60_000);
   });
 
   return v || "";
