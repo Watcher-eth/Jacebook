@@ -66,14 +66,12 @@ export function getAllCelebrities(): Celebrity[] {
   return CELEBRITY_DATA;
 }
 
-// For navbar / search results (instant, no manifest)
 export function getAvatarUrlForSlug(slug: string) {
   const pick = AVATAR_PICK.get(slug);
   if (!pick) return null;
   return pageJpegUrlFast(pick.file, pick.page);
 }
 
-// Useful for fast search popover without touching huge objects
 export function searchCelebs(q: string, limit = 8) {
   const query = (q || "").toLowerCase().trim();
   if (!query) return [];

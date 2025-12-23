@@ -50,8 +50,6 @@ function titleCase(s: string) {
 export default function CommunityPage() {
   const router = useRouter();
 
-  // If your file is /pages/community/[type].tsx then this should be `router.query.type`
-  // If it's /pages/c/[filter].tsx then use `router.query.filter`
   const type = typeof router.query.filter === "string" ? router.query.filter : "";
   
   const peopleRes = useJson<{ people: CommunityPerson[] }>(

@@ -6,8 +6,7 @@ import { getCommunitySlugs } from "@/lib/consts";
 type PersonCard = {
   slug: string;
   name: string;
-  imageUrl: string; // may be ""
-};
+  imageUrl: string; 
 
 type CacheEntry<T> = { exp: number; v: T };
 const cache = new Map<string, CacheEntry<PersonCard>>();
@@ -63,7 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return;
   }
 
-  // dedupe + keep ordering from your communities array
   const uniq = Array.from(new Set(slugs));
 
   const people = await Promise.all(uniq.map((s) => hydratePerson(s)));

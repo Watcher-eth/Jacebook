@@ -83,7 +83,6 @@ export function NewsFeedPost({
   }, [hqImageUrl, didUpgrade, priorityImage]);
 
   return (
-    // ✅ IMPORTANT: attach ref here
     <div ref={ref} className="rounded-lg ">
       <div className="p-3 pb-0 bg-white shadow-b-md rounded-lg">
         <div className="flex items-start justify-between mb-2">
@@ -137,10 +136,6 @@ export function NewsFeedPost({
             loading={priorityImage ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priorityImage ? "high" : "auto"}
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement;
-              console.error("[post img fail]", { src: img.src, currentSrc: img.currentSrc });
-            }}
           />
         </div>
 

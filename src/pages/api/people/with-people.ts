@@ -142,7 +142,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const ownerApps = (owner?.appearances as any as Appearance[]) || [];
     const ownerHi = ownerApps.filter((a) => (a.confidence ?? 0) >= 99.7);
 
-    // map file->appearances for owner (fast lookup)
     const ownerByFile = new Map<string, Appearance[]>();
     for (const a of ownerHi) {
       const arr = ownerByFile.get(a.file) || [];

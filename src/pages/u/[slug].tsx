@@ -1,6 +1,5 @@
 // pages/people/[slug].tsx
 import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
-import Head from "next/head";
 import React from "react";
 
 import { FacebookNavbar } from "@/components/layout/navbar";
@@ -45,7 +44,6 @@ type PageProps = {
   name: string;
   count: number;
 
-  // timestamps/years removed from SSR
   years: string[];
 
   profileAvatarUrl: string;
@@ -109,9 +107,7 @@ function pageJpegUrlFast(pdfKey: string, page: number) {
 }
 
 const MIN_CONF = 99.7;
-// SSR fewer posts = faster TTFB + faster first paint (big deal)
 const SSR_POST_LIMIT = 12;
-// if they all have same date anyway
 const FIXED_TIMESTAMP = "Dec 19, 2025";
 const FIXED_YEARS = ["Recent"];
 
@@ -155,12 +151,10 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   const celeb = getCelebrityBySlug(slug);
   if (!celeb) return { notFound: true };
 
-  // Let CDN cache HTML
   ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
   const hi = (celeb.appearances as Appearance[]).filter((a) => (a.confidence ?? 0) >= MIN_CONF);
 
-  // ✅ index once (kills N*M scans)
   const hiByFile = new Map<string, Appearance[]>();
   for (const a of hi) {
     const arr = hiByFile.get(a.file);
@@ -185,7 +179,6 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
     };
   }
 
-  // Avatar/Cover: no worker calls
   const top2 = pickTopAppearances(celeb.appearances as Appearance[], MIN_CONF, 2);
   const pfpA = top2[0] ?? null;
   const coverA = top2[1] ?? top2[0] ?? null;
@@ -194,7 +187,6 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   const profileAvatarUrl = pfpA ? pageJpegUrlFast(pfpA.file, pfpA.page) : fallbackThumb;
   const coverUrl = coverA ? pageJpegUrlFast(coverA.file, coverA.page) : profileAvatarUrl;
 
-  // Cheap sort proxy (no filesByKeys)
   const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
   const ssrKeys = docsKeysSorted.slice(0, SSR_POST_LIMIT);
 
@@ -251,12 +243,10 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
   const [loadingMore, setLoadingMore] = React.useState(false);
   const loadRef = React.useRef<HTMLDivElement | null>(null);
   
-  // Friends: client-side (server cached)
   const friendsRes = useJson<{ friends: FriendEdge[] }>(
     `/api/people/friends?slug=${encodeURIComponent(slug)}`
   );
 
-  // WITH people: client-side batch (server cached)
   const postKeys = React.useMemo(() => feedPosts.map((p) => p.key), [feedPosts]);
   const withRes = useJson<{ withByKey: Record<string, WithPerson[]> }>(
     postKeys.length
@@ -264,7 +254,6 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
       : null
   );
 
-  // Wikidata: off SSR (server cached)
   const wdRes = useJson<{ wikidata: WikidataProfile | null }>(
     `/api/people/wikidata?name=${encodeURIComponent(wikidataName)}`
   );
@@ -413,7 +402,6 @@ const photos = React.useMemo(() => {
             {tab === "photos" && <PhotoGrid photos={photos} />}
           </main>
 
-          {/* RIGHT SIDEBAR stays desktop-only */}
           <aside className="hidden lg:block">
             <TimelineSection years={years} />
           </aside>

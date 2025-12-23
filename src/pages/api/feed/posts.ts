@@ -65,7 +65,6 @@ function shuffleInPlace<T>(arr: T[], rand: () => number) {
   return arr;
 }
 
-// ---- tiny cache utils (server memory) ----
 function now() {
   return Date.now();
 }
@@ -88,11 +87,8 @@ async function once<T>(key: string, fn: () => Promise<T>) {
   return q;
 }
 
-// cache: name -> avatarUrl|null (24h)
 const avatarCache = new Map<string, CacheEntry<string | null>>();
 
-// NOTE: this assumes your wikidata layer returns `imageUrl`
-// if it doesn't yet, it will just be "" and still cached.
 async function getAvatarForName(name: string): Promise<string> {
   const k = name;
   const cached = getCache(avatarCache, k);
@@ -107,7 +103,6 @@ async function getAvatarForName(name: string): Promise<string> {
   return v || "";
 }
 
-// ---- appearance helpers ----
 function conf(a: Appearance) {
   return typeof a.confidence === "number" ? a.confidence : 0;
 }
@@ -136,19 +131,16 @@ function pageJpegUrlFast(pdfKey: string, page: number) {
 
 type Item = { file: string; previewPage: number; pages: number[] };
 
-// ---- WITH people index, restricted to returned files only (fast-ish) ----
 function buildPagePeopleIndex(args: {
   allCelebs: ReturnType<typeof getAllCelebrities>;
   keysSet: Set<string>;
 }) {
   const { allCelebs, keysSet } = args;
 
-  // file -> page -> Map<slug, maxConf>
   const byFile = new Map<string, Map<number, Map<string, number>>>();
 
   for (const c of allCelebs) {
     const slug = slugifyName(c.name);
-    // optional: don't show banned people in "with"
     if (isBannedAuthorSlug(slug)) continue;
 
     for (const a of ((c.appearances as any as Appearance[]) || [])) {
@@ -219,11 +211,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const all = getAllCelebrities();
 
-  // slug -> name
   const slugToName = new Map<string, string>();
   for (const c of all) slugToName.set(slugifyName(c.name), c.name);
 
-  // Build per-author queues
   const queues = new Map<string, { author: string; items: Item[] }>();
 
   for (const c of all) {
@@ -275,7 +265,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return null;
   }
 
-  // burn cursor
   let produced = 0;
   while (produced < cursor) {
     const s = nextAuthorRound();
@@ -284,7 +273,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     produced++;
   }
 
-  // produce page (without withPeople/avatars yet)
   const out: FeedPost[] = [];
 
   while (out.length < limit) {
@@ -314,32 +302,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // avatars: only once per unique author in this page (cached)
   const uniqAuthorNames = Array.from(new Set(out.map((p) => p.author)));
   const avatarPairs = await Promise.all(
     uniqAuthorNames.map(async (name) => [name, await getAvatarForName(name)] as const)
   );
   const avatarByName = new Map<string, string>(avatarPairs);
 
-  // withPeople: build restricted index for returned files only
   const keysSet = new Set(out.map((p) => p.key));
   const byFile = buildPagePeopleIndex({ allCelebs: all, keysSet });
 
-  
-
-  // finalize
   const posts = out.map((p) => {
     const previewPage = Number((p.content.match(/Page (\d+)/)?.[1] ?? "1")) || 1;
 
     const likedBySlugs = pickLikedBy(p.key, 3);
 
-const likedBy = likedBySlugs.map((slug) => {
-  const c = getCelebrityBySlug(slug);
-  return {
-    slug,
-    name: c?.name ?? slug,
-  };
-});
+    const likedBy = likedBySlugs.map((slug) => {
+      const c = getCelebrityBySlug(slug);
+      return {
+        slug,
+        name: c?.name ?? slug,
+      };
+    });
+
     const withPeople = coPeopleForPost({
       byFile,
       file: p.key,

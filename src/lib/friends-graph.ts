@@ -63,8 +63,6 @@ export function buildFriendsForPerson(opts: {
   manifest?: any | null;
   minEdgeWeight?: number;
   limit?: number;
-
-  // new knobs
   minConfOwner?: number;
   minConfOther?: number;
   pageWindow?: number; // 0 = exact page, 1 = +/-1 page, etc.
@@ -83,7 +81,6 @@ export function buildFriendsForPerson(opts: {
 
   const slugToCeleb = new Map<string, Celebrity>();
 
-  // file -> page -> Map<slug, maxConfOnThatPage>
   const byFile = new Map<string, Map<number, Map<string, number>>>();
 
   for (const c of allCelebs) {
@@ -97,7 +94,6 @@ export function buildFriendsForPerson(opts: {
       const kPage = a.page;
       const cval = conf(a);
 
-      // Store all, we'll threshold later (so we can apply different thresholds per role).
       let pages = byFile.get(kFile);
       if (!pages) {
         pages = new Map();
@@ -115,11 +111,9 @@ export function buildFriendsForPerson(opts: {
     }
   }
 
-  // Count co-occurrences
   const counts = new Map<string, number>();
 
   for (const [file, pages] of byFile.entries()) {
-    // Get pages where owner is present above owner threshold
     const ownerPages: number[] = [];
     for (const [page, people] of pages.entries()) {
       const ownerConf = people.get(ownerSlug) ?? 0;
@@ -127,12 +121,10 @@ export function buildFriendsForPerson(opts: {
     }
     if (!ownerPages.length) continue;
 
-    // For each owner page, look in the window +/- pageWindow and count others
     for (const p of ownerPages) {
       const start = p - pageWindow;
       const end = p + pageWindow;
 
-      // Dedup within this "event" so if other appears on p and p+1 we still count 1
       const seenOtherInEvent = new Set<string>();
 
       for (let q = start; q <= end; q++) {

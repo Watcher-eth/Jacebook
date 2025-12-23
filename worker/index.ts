@@ -7,15 +7,14 @@
   export default {
     async fetch(request: Request, env: any): Promise<Response> {
       const url = new URL(request.url);
-      const path = url.pathname.slice(1); // Remove leading slash
-  
+      const path = url.pathname.slice(1); 
+      
       const cacheHeaders = {
         "Access-Control-Allow-Origin": "*",
         "Cross-Origin-Resource-Policy": "cross-origin",
         "Cache-Control": "public, max-age=31536000, immutable",
       };
   
-      // Handle CORS preflight
       if (request.method === "OPTIONS") {
         return new Response(null, {
           headers: {
@@ -36,7 +35,6 @@
         });
       }
   
-      // Serve PDF images manifest
       if (path === "api/pdf-manifest") {
         const manifestObject = await env.R2_BUCKET.get("pdfs-as-jpegs/manifest.json");
         
@@ -60,12 +58,10 @@
   
  
   
-      // Get files by keys endpoint (POST with array of keys)
       if (path === "api/files-by-keys" && request.method === "POST") {
         const body = await request.json() as { keys: string[] };
         const keys = body.keys || [];
         
-        // Fetch metadata for each file in parallel
         const files: { key: string; size: number; uploaded: string }[] = [];
         
         await Promise.all(
@@ -81,7 +77,6 @@
           })
         );
   
-        // Sort by key to maintain consistent order
         files.sort((a, b) => a.key.localeCompare(b.key));
   
         return new Response(
@@ -98,7 +93,6 @@
         );
       }
   
-      // List all files endpoint (returns everything)
       if (path === "api/all-files") {
         const files: { key: string; size: number; uploaded: string }[] = [];
         let hasMoreInBucket = true;
@@ -143,13 +137,11 @@
         );
       }
   
-      // List files endpoint (paginated)
       if (path === "api/files" || path === "files") {
         const startAfter = url.searchParams.get("cursor") || undefined;
         const limit = Math.min(parseInt(url.searchParams.get("limit") || "100"), 1000);
         const prefix = url.searchParams.get("prefix") || "";
   
-        // We need to fetch more than requested since we filter out non-PDFs
         const files: { key: string; size: number; uploaded: string }[] = [];
         let hasMoreInBucket = true;
         let bucketCursor: string | undefined = undefined;
@@ -184,11 +176,9 @@
           bucketCursor = listed.truncated ? listed.cursor : undefined;
         }
   
-        // Trim to limit and determine if there's more
         const hasMore = files.length > limit || hasMoreInBucket;
         const returnFiles = files.slice(0, limit);
         
-        // Use the last key as cursor for next request
         const nextCursor = hasMore && returnFiles.length > 0 
           ? returnFiles[returnFiles.length - 1].key 
           : null;
@@ -221,7 +211,6 @@
         "Cache-Control": "no-store, max-age=0",
       };
       
-      // Serve file from R2
       const object = await env.R2_BUCKET.get(path);
   
     

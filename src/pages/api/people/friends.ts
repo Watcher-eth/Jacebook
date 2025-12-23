@@ -24,7 +24,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const slug = String(req.query.slug || "").trim();
   if (!slug) return res.status(400).json({ error: "missing slug" });
 
-  // CDN caching
   res.setHeader("Cache-Control", "public, s-maxage=1800, stale-while-revalidate=86400");
 
   const k = `friends:${slug}`;

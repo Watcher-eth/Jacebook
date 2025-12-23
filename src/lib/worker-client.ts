@@ -37,8 +37,6 @@ export function thumbnailUrl(key: string) {
   return fileUrl(key);
 }
 
-// ---------- FAST in-process fetch cache (SSR) ----------
-
 type CacheEntry<T> = { exp: number; v: T };
 const jsonCache = new Map<string, CacheEntry<any>>();
 const inflight = new Map<string, Promise<any>>();
@@ -99,7 +97,6 @@ export async function filesByKeys(keys: string[], opts?: { ttlMs?: number }) {
   return json.files;
 }
 
-// ---- manifest (optional) ----
 export interface PdfManifestEntry {
   pages: number;
 }
@@ -107,7 +104,7 @@ export type PdfManifest = Record<string, PdfManifestEntry>;
 
 export async function fetchPdfManifest(opts?: { ttlMs?: number }): Promise<PdfManifest | null> {
   const url = `${getWorkerUrl()}/api/pdf-manifest`;
-  const ttlMs = opts?.ttlMs ?? 30 * 60_000; // 30 min
+  const ttlMs = opts?.ttlMs ?? 30 * 60_000; 
   try {
     return await fetchJsonCached<PdfManifest>({ url, ttlMs });
   } catch {

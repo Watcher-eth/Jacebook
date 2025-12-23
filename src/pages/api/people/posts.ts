@@ -67,7 +67,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     (a) => !!a?.file && !!a?.page && (a.confidence ?? 0) >= MIN_CONF
   );
 
-  // Group hi matches by file
   const hiByFile = new Map<string, Appearance[]>();
   for (const a of hi) {
     const arr = hiByFile.get(a.file);
@@ -75,7 +74,6 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
     else hiByFile.set(a.file, [a]);
   }
 
-  // Only include files that have at least one hi match
   const keysAll = unique(hi.map((a) => a.file));
   const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
 
@@ -84,7 +82,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   const posts: PagePost[] = slice
     .map((key) => {
       const appearancesInFile = hiByFile.get(key) ?? [];
-      if (!appearancesInFile.length) return null; // extra safety
+      if (!appearancesInFile.length) return null;
 
       const previewPage = chooseBestPage(appearancesInFile);
 

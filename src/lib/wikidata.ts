@@ -5,29 +5,27 @@ export type WikidataProfile = {
   
     bio?: string;
   
-    dob?: string; // YYYY-MM-DD
+    dob?: string;
     age?: number;
   
-    occupations?: string[]; // multiple
+    occupations?: string[];
     nationality?: string;
     gender?: string;
   
-    // relationship summary (best-effort, tries to avoid stale spouse data)
     relationship?: string;
   
-    // public-facing "profile-ish" extras
-    imageUrl?: string; // commons -> direct file url
+    imageUrl?: string;
     officialWebsite?: string;
   
     socials?: Partial<{
-      twitter: string; // @handle or url
+      twitter: string;
       instagram: string;
       tiktok: string;
-      youtube: string; // channel id or url
+      youtube: string;
       facebook: string;
       imdb: string;
-      wikidata: string; // QID link
-      wikipedia: string; // page link if found
+      wikidata: string;
+      wikipedia: string;
     }>;
   };
   
@@ -159,7 +157,6 @@ export type WikidataProfile = {
   function commonsFileToUrl(file: string): string | undefined {
     const f = asText(file);
     if (!f) return undefined;
-    // Basic direct file URL; good enough for avatars. (Commons also has special thumbnail APIs.)
     const name = f.replace(/^File:/i, "").replace(/\s+/g, "_");
     return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(name)}`;
   }
@@ -187,12 +184,10 @@ export type WikidataProfile = {
     spouseClaims: any[];
     partnerClaims: any[];
   }): { kind: "spouse" | "partner"; qid: string; start?: string; end?: string } | null {
-    // Prefer entries with no end date (ongoing) and most recent start date.
     function rank(c: any) {
-      const start = claimQualifierTime(c, "P580"); // start time
-      const end = claimQualifierTime(c, "P582"); // end time
+      const start = claimQualifierTime(c, "P580");
+      const end = claimQualifierTime(c, "P582");
       const ongoing = end ? 0 : 1;
-      // sort by ongoing desc, then start desc (lex works on YYYY-MM-DD)
       return { ongoing, start: start || "0000-00-00", end };
     }
   
@@ -246,29 +241,23 @@ export type WikidataProfile = {
     const label = pickEnLabel(ent) || hit.label || name;
     const desc = pickEnDescription(ent) || hit.description;
   
-    // core IDs/links
     const wikiTitle = ent.sitelinks?.enwiki?.title;
     const wikidataLink = `https://www.wikidata.org/wiki/${hit.qid}`;
   
-    // DOB (P569)
     const dobClaim = allClaims(ent.claims?.P569)[0];
     const dobIso = parseWdTimeValue(dobClaim?.mainsnak?.datavalue?.value);
     const age = dobIso ? calcAge(dobIso) : undefined;
   
-    // Occupation (P106) - allow multiple, not just 1
     const occClaims = allClaims(ent.claims?.P106);
     const occQids = clamp(
       occClaims.map(claimEntityId).filter((x): x is string => !!x),
       4
     );
   
-    // Nationality (P27)
     const natQid = claimEntityId(allClaims(ent.claims?.P27)[0]);
   
-    // Gender (P21)
     const genderQid = claimEntityId(allClaims(ent.claims?.P21)[0]);
   
-    // Relationship: spouse (P26), partner (P451)
     const spouseClaims = allClaims(ent.claims?.P26);
     const partnerClaims = allClaims(ent.claims?.P451);
     const relBest = pickMostRelevantRelationship({ spouseClaims, partnerClaims });
@@ -301,20 +290,17 @@ export type WikidataProfile = {
       relationship = "Unknown";
     }
   
-    // Image (P18) commons filename
     const imageFile = claimString(ent.claims?.P18);
     const imageUrl = imageFile ? commonsFileToUrl(imageFile) : undefined;
   
-    // Official website (P856)
     const officialWebsite = claimString(ent.claims?.P856);
   
-    // Socials / IDs
-    const twitter = claimString(ent.claims?.P2002);   // Twitter username
-    const instagram = claimString(ent.claims?.P2003); // Instagram username
-    const tiktok = claimString(ent.claims?.P7085);    // TikTok username
-    const youtube = claimString(ent.claims?.P2397);   // YouTube channel ID
-    const facebook = claimString(ent.claims?.P2013);  // Facebook username
-    const imdb = claimString(ent.claims?.P345);       // IMDb ID
+    const twitter = claimString(ent.claims?.P2002);
+    const instagram = claimString(ent.claims?.P2003);
+    const tiktok = claimString(ent.claims?.P7085);
+    const youtube = claimString(ent.claims?.P2397);
+    const facebook = claimString(ent.claims?.P2013);
+    const imdb = claimString(ent.claims?.P345);
   
     const socials: WikidataProfile["socials"] = {
       wikidata: wikidataLink,
@@ -327,7 +313,6 @@ export type WikidataProfile = {
       ...(imdb ? { imdb: `https://www.imdb.com/name/${imdb}/` } : null),
     };
   
-    // Wikipedia extract is usually better bio; also gives us a canonical page URL
     const wp = wikiTitle ? await wikipediaSummary(wikiTitle) : null;
     if (wp?.pageUrl) socials.wikipedia = wp.pageUrl;
   

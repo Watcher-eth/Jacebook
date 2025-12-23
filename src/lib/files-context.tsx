@@ -18,7 +18,6 @@ function getFileId(key: string): string {
   return match ? match[0] : key;
 }
 
-// Helper to get filtered file keys based on filters
 function getFilteredFileKeys(
   allFiles: FileItem[],
   filters: { collection?: string; celebrity?: string }
@@ -40,7 +39,6 @@ function getFilteredFileKeys(
     return allFiles.filter((f) => f.key.startsWith(collection)).map((f) => f.key);
   }
   
-  // No filters - return all files
   return allFiles.map((f) => f.key);
 }
 
@@ -53,11 +51,10 @@ export function FilesProvider({
   files: FileItem[];
   pdfManifest: PdfManifest;
 }) {
-  // Store manifest in global cache for access outside React context
   useEffect(() => {
     setPdfManifest(pdfManifest);
   }, [pdfManifest]);
-  // Create a sorted list of file paths for navigation
+
   const sortedFiles = useMemo(() => 
     [...files].sort((a, b) => {
       const idA = getFileId(a.key);
@@ -77,22 +74,18 @@ export function FilesProvider({
     return map;
   }, [sortedFiles]);
 
-  // Get the full file path for a given file ID
   const getFilePath = (fileId: string): string | null => {
     return fileIdToPath.get(fileId) ?? null;
   };
 
-  // Get adjacent file path (prev/next) with optional filters
   const getAdjacentFile = (
     currentPath: string, 
     offset: number,
     filters?: { collection?: string; celebrity?: string }
   ): string | null => {
-    // Get the appropriate file list based on filters
     let fileKeys: string[];
     if (filters && (filters.collection !== "All" || filters.celebrity !== "All")) {
       fileKeys = getFilteredFileKeys(sortedFiles, filters);
-      // Sort the filtered keys by file ID
       fileKeys.sort((a, b) => {
         const idA = getFileId(a);
         const idB = getFileId(b);

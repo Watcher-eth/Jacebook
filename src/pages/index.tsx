@@ -4,7 +4,6 @@ import { NewsFeedSidebar } from "@/components/feed/sidebarLeft";
 import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
 import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
-import Head from "next/head"
 
 type WithPerson = { name: string; slug: string };
 

@@ -50,7 +50,6 @@ function pickTopAppearances(appearances: Appearance[], minConf: number, n: numbe
   return out;
 }
 
-// FAST: no manifest needed (you now have pdfs-as-jpegs copied for everything)
 function pageJpegKeyFast(pdfKey: string, page: number) {
   const base = pdfKey.replace(/\.pdf$/i, "");
   const p = String(page).padStart(3, "0");
@@ -115,12 +114,10 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
     router.push(`/u/${slug}`);
   }
 
-  // Prevent “focus → open → popover steals focus → blur → close” flicker.
-  // Radix can fire outside interactions on focus changes; we explicitly keep it open while input focused.
   const handleOpenChange = React.useCallback((v: boolean) => {
     const el = inputRef.current;
     const focused = !!el && document.activeElement === el;
-    if (!v && focused) return; // ignore close while the input is focused
+    if (!v && focused) return;
     setOpen(v);
   }, []);
 
@@ -179,12 +176,10 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
         sideOffset={6}
         className="w-120 p-0 rounded-sm border border-border shadow-lg bg-white z-[9999]"
         onOpenAutoFocus={(e) => e.preventDefault()}
-        // Don’t dismiss when clicking inside, and don’t treat input interactions as “outside”
         onInteractOutside={(e) => {
           const t = e.target as HTMLElement | null;
           if (t?.closest?.("[data-search-root]")) e.preventDefault();
         }}
-        // Keep popover open when focusing elements inside it
         onFocusOutside={(e) => {
           const t = e.target as HTMLElement | null;
           if (t?.closest?.("[data-search-root]")) e.preventDefault();
@@ -233,7 +228,6 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
                         <AvatarImage
                           src={row.avatarUrl || undefined}
                           className="rounded-sm object-cover"
-                          // If that specific avatar URL 404s, show fallback initials
                           onError={(e) => {
                             (e.currentTarget as HTMLImageElement).src = "";
                           }}
