@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getCelebrityBySlug } from "@/lib/people";
-import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
+import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
 import { pickLikedBy } from "@/lib/likedBy"
 import { LikedByPerson } from "@/components/feed/post"
+import { chooseBestPage, unique } from "@/lib/appearances"
 
 type Appearance = { file: string; page: number; confidence?: number };
 
@@ -20,25 +21,6 @@ type PagePost = {
 const MIN_CONF = 98;
 const FIXED_TIMESTAMP = "Dec 19, 2025";
 
-function conf(a: Appearance) {
-  return typeof a.confidence === "number" ? a.confidence : 0;
-}
-
-function unique<T>(arr: T[]) {
-  return Array.from(new Set(arr));
-}
-
-function chooseBestPage(appearances: Appearance[]) {
-  if (!appearances.length) return 1;
-  let best = appearances[0]!;
-  for (const cur of appearances) {
-    const cb = conf(best);
-    const cc = conf(cur);
-    if (cc > cb) best = cur;
-    else if (cc === cb && (cur.page ?? 1e9) < (best.page ?? 1e9)) best = cur;
-  }
-  return best.page || 1;
-}
 
 function pageJpegKeyFast(pdfKey: string, page: number) {
   const base = pdfKey.replace(/\.pdf$/i, "");

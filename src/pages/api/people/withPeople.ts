@@ -1,25 +1,11 @@
-// pages/api/people/with-people.ts
+// pages/api/people/withPeople.ts
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAllCelebrities, slugifyName } from "@/lib/people";
+import { chooseBestPage, conf } from "@/lib/appearances"
 
 type Appearance = { file: string; page: number; confidence?: number };
 type WithPerson = { name: string; slug: string };
 
-function conf(a: Appearance) {
-  return typeof a.confidence === "number" ? a.confidence : 0;
-}
-
-function chooseBestPage(appearances: Appearance[]) {
-  if (!appearances.length) return 1;
-  let best = appearances[0]!;
-  for (const cur of appearances) {
-    const cb = conf(best);
-    const cc = conf(cur);
-    if (cc > cb) best = cur;
-    else if (cc === cb && (cur.page ?? 1e9) < (best.page ?? 1e9)) best = cur;
-  }
-  return best.page || 1;
-}
 
 function buildPagePeopleIndex(args: {
   allCelebs: ReturnType<typeof getAllCelebrities>;

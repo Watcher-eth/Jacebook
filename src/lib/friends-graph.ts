@@ -1,12 +1,12 @@
 // src/lib/friends-graph.ts
-import type { Celebrity } from "@/lib/celebrity-data";
+import type { Celebrity } from "@/lib/celebrityData";
 import { slugifyName } from "@/lib/people";
-import { pageJpegUrlOrThumb, thumbnailKeyForPdf, fileUrl } from "@/lib/worker-client";
+import { pageJpegUrlOrThumb, thumbnailKeyForPdf, fileUrl } from "@/lib/workerClient";
 
 export type FriendEdge = {
   slug: string;
   name: string;
-  weight: number; // number of co-occurring "events"
+  weight: number; 
   avatarUrl?: string;
 };
 
@@ -51,11 +51,6 @@ function avatarUrlForCeleb(args: { celeb: Celebrity; minConf: number; manifest: 
   return fileUrl(thumbnailKeyForPdf(best.file));
 }
 
-/**
- * Less-strict friends graph:
- * - edges are counted if owner and other appear in the same file within `pageWindow` pages.
- * - owner can have stricter threshold than other (minConfOwner vs minConfOther).
- */
 export function buildFriendsForPerson(opts: {
   ownerSlug: string;
   allCelebs: Celebrity[];

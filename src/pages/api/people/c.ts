@@ -6,7 +6,8 @@ import { getCommunitySlugs } from "@/lib/consts";
 type PersonCard = {
   slug: string;
   name: string;
-  imageUrl: string; 
+  imageUrl: string;
+};
 
 type CacheEntry<T> = { exp: number; v: T };
 const cache = new Map<string, CacheEntry<PersonCard>>();

@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAllCelebrities, getCelebrityBySlug, slugifyName } from "@/lib/people";
-import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
+import { fileUrl, pageJpegUrlFast, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
 import { isBannedAuthorSlug } from "@/lib/consts";
 import { fetchWikidataProfileByName } from "@/lib/wikidata";
 import { pickLikedBy } from "@/lib/likedBy"
+import { chooseBestPage, conf } from "@/lib/appearances"
 
 type Appearance = { file: string; page: number; confidence?: number };
 type WithPerson = { name: string; slug: string };
@@ -101,32 +102,6 @@ async function getAvatarForName(name: string): Promise<string> {
   });
 
   return v || "";
-}
-
-function conf(a: Appearance) {
-  return typeof a.confidence === "number" ? a.confidence : 0;
-}
-
-function chooseBestPage(appearances: Appearance[]) {
-  if (!appearances.length) return 1;
-  let best = appearances[0]!;
-  for (const cur of appearances) {
-    const cb = conf(best);
-    const cc = conf(cur);
-    if (cc > cb) best = cur;
-    else if (cc === cb && (cur.page ?? 1e9) < (best.page ?? 1e9)) best = cur;
-  }
-  return best.page || 1;
-}
-
-function pageJpegKeyFast(pdfKey: string, page: number) {
-  const base = pdfKey.replace(/\.pdf$/i, "");
-  const p = String(page).padStart(3, "0");
-  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
-}
-
-function pageJpegUrlFast(pdfKey: string, page: number) {
-  return fileUrl(pageJpegKeyFast(pdfKey, page));
 }
 
 type Item = { file: string; previewPage: number; pages: number[] };

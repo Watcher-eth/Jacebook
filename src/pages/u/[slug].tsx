@@ -10,13 +10,15 @@ import { ProfileHeader, ProfileTab } from "@/components/profile/header";
 import { TimelineSection } from "@/components/profile/timeline";
 
 import { getCelebrityBySlug } from "@/lib/people";
-import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/worker-client";
+import { fileUrl, pageJpegUrlFast, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
 
 import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
 import { AboutSection } from "@/components/profile/aboutSection";
 import { PhotoGrid } from "@/components/profile/photoGrid";
 import { FriendGrid } from "@/components/profile/friendGrid";
 import type { WikidataProfile } from "@/lib/wikidata";
+import { useJson } from "@/components/hooks/useJson"
+import { chooseBestPage, conf } from "@/lib/appearances"
 
 type WithPerson = { name: string; slug: string };
 
@@ -61,9 +63,6 @@ function unique<T>(arr: T[]) {
   return Array.from(new Set(arr));
 }
 
-function conf(a: Appearance) {
-  return typeof a.confidence === "number" ? a.confidence : 0;
-}
 
 function pickTopAppearances(appearances: Appearance[], minConf: number, n: number) {
   const hi = (appearances || []).filter((a) => a?.file && a?.page && conf(a) >= minConf);
@@ -85,66 +84,11 @@ function pickTopAppearances(appearances: Appearance[], minConf: number, n: numbe
   return out;
 }
 
-function chooseBestPage(appearances: Appearance[]) {
-  if (!appearances.length) return 1;
-  let best = appearances[0]!;
-  for (const cur of appearances) {
-    const cb = conf(best);
-    const cc = conf(cur);
-    if (cc > cb) best = cur;
-    else if (cc === cb && (cur.page ?? 1e9) < (best.page ?? 1e9)) best = cur;
-  }
-  return best.page || 1;
-}
-
-function pageJpegKeyFast(pdfKey: string, page: number) {
-  const base = pdfKey.replace(/\.pdf$/i, "");
-  const p = String(page).padStart(3, "0");
-  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
-}
-function pageJpegUrlFast(pdfKey: string, page: number) {
-  return fileUrl(pageJpegKeyFast(pdfKey, page));
-}
-
 const MIN_CONF = 99.7;
 const SSR_POST_LIMIT = 12;
 const FIXED_TIMESTAMP = "Dec 19, 2025";
 const FIXED_YEARS = ["Recent"];
 
-function useJson<T>(url: string | null) {
-  const [data, setData] = React.useState<T | null>(null);
-  const [loading, setLoading] = React.useState(!!url);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
-
-    setLoading(true);
-    setError(null);
-
-    fetch(url, { headers: { Accept: "application/json" } })
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((j) => {
-        if (!cancelled) setData(j);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e?.message ?? "error");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  return { data, loading, error };
-}
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
   const slug = String(ctx.params?.slug || "");
@@ -202,7 +146,7 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
       const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
 
       const thumbUrl = fileUrl(thumbnailKeyForPdf(key));
-const hqUrl = pageJpegUrlFast(key, previewPage);
+      const hqUrl = pageJpegUrlFast(key, previewPage);
 
       return {
         key,

@@ -8,35 +8,7 @@ import { NewsFeedSidebar } from "@/components/feed/sidebarLeft";
 import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
 import { type CommunityPerson, CommunityPeopleGrid } from "@/components/feed/community";
-
-function useJson<T>(url: string | null) {
-  const [data, setData] = React.useState<T | null>(null);
-  const [loading, setLoading] = React.useState(!!url);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
-
-    setLoading(true);
-    setError(null);
-
-    fetch(url, { headers: { Accept: "application/json" } })
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((j) => !cancelled && setData(j))
-      .catch((e) => !cancelled && setError(e?.message ?? "error"))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  return { data, loading, error };
-}
+import { useJson } from "@/components/hooks/useJson"
 
 function titleCase(s: string) {
   return s

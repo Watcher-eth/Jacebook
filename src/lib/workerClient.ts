@@ -188,6 +188,3 @@ export function pageJpegKeyFast(pdfKey: string, page: number) {
     return fileUrl(pageJpegKeyFast(pdfKey, page));
   }
   
-  export function thumbUrlForPdf(pdfKey: string) {
-    return fileUrl(thumbnailKeyForPdf(pdfKey));
-  }

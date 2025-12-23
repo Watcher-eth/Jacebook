@@ -1,4 +1,4 @@
-import { CustomHead } from "@/components/layout/CustomHead"
+import { CustomHead } from "@/components/layout/customHead"
 import { lucidaGrant } from "@/lib/font"
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";

@@ -4,6 +4,7 @@ import { NewsFeedSidebar } from "@/components/feed/sidebarLeft";
 import { NewsFeedRightSidebar } from "@/components/feed/sidebarRight";
 import { CreatePost } from "@/components/profile/createPost";
 import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
+import { useJson } from "@/components/hooks/useJson"
 
 type WithPerson = { name: string; slug: string };
 
@@ -18,37 +19,10 @@ type FeedPost = {
   imageUrl?: string;
   hqImageUrl?: string;
   likedBy?: LikedByPerson[];
-  withPeople?: WithPerson[]; // ✅ add this
+  withPeople?: WithPerson[]; 
 };
 
-function useJson<T>(url: string | null) {
-  const [data, setData] = React.useState<T | null>(null);
-  const [loading, setLoading] = React.useState(!!url);
-  const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (!url) return;
-    let cancelled = false;
-
-    setLoading(true);
-    setError(null);
-
-    fetch(url, { headers: { Accept: "application/json" } })
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
-      .then((j) => !cancelled && setData(j))
-      .catch((e) => !cancelled && setError(e?.message ?? "error"))
-      .finally(() => !cancelled && setLoading(false));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  return { data, loading, error };
-}
 
 export default function NewsFeedPage() {
   const [posts, setPosts] = React.useState<FeedPost[]>([]);

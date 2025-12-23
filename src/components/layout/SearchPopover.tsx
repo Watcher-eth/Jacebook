@@ -6,8 +6,8 @@ import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { getAllCelebrities, slugifyName } from "@/lib/people";
-import type { CelebrityAppearance } from "@/lib/celebrity-data";
-import { fileUrl } from "@/lib/worker-client";
+import type { CelebrityAppearance } from "@/lib/celebrityData";
+import { fileUrl } from "@/lib/workerClient";
 
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";

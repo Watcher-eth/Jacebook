@@ -1,5 +1,5 @@
 // src/lib/liked-by.ts
-import { closeFriends } from "./consts"; // or wherever it lives
+import { closeFriends } from "./consts"; 
 
 function xmur3(str: string) {
   let h = 1779033703 ^ str.length;
