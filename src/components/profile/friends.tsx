@@ -20,17 +20,25 @@ function initialsFromName(name: string) {
 
 const EPSTEIN_SLUG = "jeffrey-epstein";
 
+function hasRealAvatar(f: FriendEdge) {
+  const u = (f.avatarUrl || "").trim();
+  return u.length > 0;
+}
+
 export function FriendsSection(props: {
   friends: FriendEdge[];
   loading?: boolean;
   name: string; // slug currently
-  onShowAll?: () => void; 
+  onShowAll?: () => void;
 }) {
   const { friends, loading, name, onShowAll } = props;
 
   const MAX = 12;
-  const visible = (friends ?? []).slice(0, MAX);
-  const count = friends?.length ?? 0;
+  const all = friends ?? [];
+
+  const preview = all.filter(hasRealAvatar).slice(0, MAX);
+
+  const count = all.length;
   const hasMore = count > MAX;
 
   return (
@@ -68,31 +76,32 @@ export function FriendsSection(props: {
         </div>
       ) : count === 0 ? (
         <div className="text-sm text-muted-foreground mt-5">No friends yet.</div>
+      ) : preview.length === 0 ? (
+        <div className="text-sm text-muted-foreground mt-5">
+          No friends with profile photos yet.
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-2 mt-4">
-          {visible.map((f) => {
-            const src = f.avatarUrl || "../placeholderPfp.jpg"
-            return (
-              <Link
-                key={f.slug}
-                href={`/u/${f.slug}`}
-                className="relative group cursor-pointer hover:scale-101 active:scale-99"
-              >
-                <Avatar className="h-[95px] w-full rounded-md">
-                  <AvatarImage className="rounded-md object-cover" src={src} />
-                  <AvatarFallback className="rounded-md">
-                    {initialsFromName(f.name || f.slug)}
-                  </AvatarFallback>
-                </Avatar>
+          {preview.map((f) => (
+            <Link
+              key={f.slug}
+              href={`/u/${f.slug}`}
+              className="relative group cursor-pointer hover:scale-101 active:scale-99"
+            >
+              <Avatar className="h-[95px] w-full rounded-md">
+                <AvatarImage className="rounded-md object-cover" src={f.avatarUrl!} />
+                <AvatarFallback className="rounded-md">
+                  {initialsFromName(f.name || f.slug)}
+                </AvatarFallback>
+              </Avatar>
 
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
-                  <p className="text-white text-xs font-semibold leading-tight line-clamp-2">
-                    {f.name}
-                  </p>
-                </div>
-              </Link>
-            );
-          })}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 rounded-b-sm">
+                <p className="text-white text-xs font-semibold leading-tight line-clamp-2">
+                  {f.name}
+                </p>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </Card>
