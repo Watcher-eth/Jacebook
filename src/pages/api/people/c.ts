@@ -16,7 +16,7 @@ async function hydratePerson(slug: string): Promise<PersonCard> {
   if (hit) return hit;
 
   return personCache.once(k, async () => {
-    const celeb = getCelebrityBySlug(slug);
+    const celeb = await getCelebrityBySlug(slug);
     const name = celeb?.name ?? slug;
 
     const wd = await fetchWikidataProfileByName(name).catch(() => null);
@@ -24,7 +24,7 @@ async function hydratePerson(slug: string): Promise<PersonCard> {
 
     const v: PersonCard = {
       slug,
-      name: typeof wd?.name === "string" ? wd.name : name,
+      name: typeof (wd as any)?.name === "string" ? (wd as any).name : name,
       imageUrl,
     };
 

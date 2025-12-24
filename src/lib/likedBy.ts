@@ -1,7 +1,7 @@
 // src/lib/liked-by.ts
 import { closeFriends } from "./consts"; 
 
-function xmur3(str: string) {
+export function xmur3(str: string) {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) {
     h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
@@ -15,7 +15,7 @@ function xmur3(str: string) {
   };
 }
 
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   return function () {
     let t = (seed += 0x6d2b79f5);
     t = Math.imul(t ^ (t >>> 15), t | 1);

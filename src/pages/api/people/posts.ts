@@ -1,11 +1,7 @@
+// pages/api/people/posts.ts
+import { getPersonById, getPostsForPerson, type PhotoPostRow } from "@/lib/people";
+import { photoFullUrl, photoThumbUrl } from "@/lib/photos-urls";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getCelebrityBySlug } from "@/lib/people";
-import { fileUrl, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
-import { pickLikedBy } from "@/lib/likedBy"
-import { LikedByPerson } from "@/components/feed/post"
-import { chooseBestPage, unique } from "@/lib/appearances"
-
-type Appearance = { file: string; page: number; confidence?: number };
 
 type PagePost = {
   key: string;
@@ -15,91 +11,45 @@ type PagePost = {
   authorAvatar: string;
   imageUrl?: string;
   hqImageUrl?: string;
-  likedBy?: LikedByPerson[];
 };
 
-const MIN_CONF = 98;
-const FIXED_TIMESTAMP = "Dec 19, 2025";
-
-
-function pageJpegKeyFast(pdfKey: string, page: number) {
-  const base = pdfKey.replace(/\.pdf$/i, "");
-  const p = String(page).padStart(3, "0");
-  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
+function labelFor(row: PhotoPostRow) {
+  const parts = [
+    row.source,
+    row.release_batch ? row.release_batch : null,
+    row.original_filename || row.id,
+  ].filter(Boolean);
+  return parts.join(" • ");
 }
 
-function pageJpegUrlFast(pdfKey: string, page: number) {
-  return fileUrl(pageJpegKeyFast(pdfKey, page));
-}
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const slug = String(req.query.slug || "");
-  const cursor = Math.max(0, Number(req.query.cursor || 0));
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const slug = String(req.query.slug || "").trim();
+  const cursor = req.query.cursor ? String(req.query.cursor) : null;
   const limit = Math.min(50, Math.max(6, Number(req.query.limit || 12)));
 
-  const celeb = getCelebrityBySlug(slug);
-  if (!celeb) {
-    res.status(404).json({ posts: [], nextCursor: null });
-    return;
-  }
+  const person = await getPersonById(slug);
+  if (!person) return res.status(404).json({ posts: [], nextCursor: null });
 
   res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
-  const hi = (celeb.appearances as Appearance[]).filter(
-    (a) => !!a?.file && !!a?.page && (a.confidence ?? 0) >= MIN_CONF
-  );
+  const { rows, nextCursor } = await getPostsForPerson({
+    personId: person.id,
+    cursor,
+    limit,
+    minConf: 98,
+  });
 
-  const hiByFile = new Map<string, Appearance[]>();
-  for (const a of hi) {
-    const arr = hiByFile.get(a.file);
-    if (arr) arr.push(a);
-    else hiByFile.set(a.file, [a]);
-  }
+  const posts: PagePost[] = rows.map((p) => ({
+    key: p.id,
+    url: photoFullUrl(p.id),
+    timestamp: p.created_at
+      ? new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "—",
+    content: labelFor(p),
+    authorAvatar: "",
+    imageUrl: photoThumbUrl(p.id, 512),
+    hqImageUrl: photoFullUrl(p.id),
+  }));
 
-  const keysAll = unique(hi.map((a) => a.file));
-  const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
-
-  const slice = docsKeysSorted.slice(cursor, cursor + limit);
-
-  const posts: PagePost[] = slice
-    .map((key) => {
-      const appearancesInFile = hiByFile.get(key) ?? [];
-      if (!appearancesInFile.length) return null;
-
-      const previewPage = chooseBestPage(appearancesInFile);
-
-      const pages = appearancesInFile.map((a) => a.page).sort((x, y) => x - y);
-      const shown = pages.slice(0, 8);
-      const pageHint = shown.length ? `Pages: ${shown.join(", ")}${pages.length > shown.length ? "…" : ""}` : "";
-
-      const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
-
-      const thumbUrl = fileUrl(thumbnailKeyForPdf(key));
-      const hqUrl = pageJpegUrlFast(key, previewPage);
-
-          const likedBySlugs = pickLikedBy(key, 3);
-      
-      const likedBy = likedBySlugs.map((slug) => {
-        const c = getCelebrityBySlug(slug);
-        return {
-          slug,
-          name: c?.name ?? slug,
-        };
-      });
-
-      return {
-        likedBy,
-        key,
-        url: fileUrl(key),
-        timestamp: FIXED_TIMESTAMP,
-        authorAvatar: "",
-        content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
-        imageUrl: thumbUrl,
-        hqImageUrl: hqUrl,
-      };
-    })
-    .filter(Boolean) as PagePost[];
-
-  const next = cursor + limit < docsKeysSorted.length ? String(cursor + limit) : null;
-  res.status(200).json({ posts, nextCursor: next });
+  return res.status(200).json({ posts, nextCursor });
 }

@@ -1,17 +1,16 @@
+// pages/api/feed/posts.ts
 import type { NextApiRequest, NextApiResponse } from "next";
-import { getAllCelebrities, getCelebrityBySlug, slugifyName } from "@/lib/people";
-import { fileUrl, pageJpegUrlFast, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
-import { isBannedAuthorSlug } from "@/lib/consts";
-import { fetchWikidataProfileByName } from "@/lib/wikidata";
-import { pickLikedBy } from "@/lib/likedBy"
-import { chooseBestPage, conf } from "@/lib/appearances"
-import { createTtlCache } from "@/lib/apiCache"
 
-type Appearance = { file: string; page: number; confidence?: number };
+import { isBannedAuthorSlug } from "@/lib/consts";
+import { createTtlCache } from "@/lib/apiCache";
+import { pickLikedBy } from "@/lib/likedBy";
+import { q } from "@/lib/db";
+
 type WithPerson = { name: string; slug: string };
+type LikedByPerson = { name: string; slug: string };
 
 type FeedPost = {
-  key: string; // pdf key
+  key: string;
   url: string;
   timestamp: string;
   content: string;
@@ -20,144 +19,85 @@ type FeedPost = {
   authorSlug: string;
   authorAvatar: string;
 
-  imageUrl?: string;   // thumb
-  hqImageUrl?: string; // HQ
+  imageUrl?: string;
+  hqImageUrl?: string;
 
   withPeople?: WithPerson[];
+  likedBy?: LikedByPerson[];
 };
 
-const MIN_CONF = 99.7;
-const FIXED_TIMESTAMP = "Dec 19, 2025";
 const LIMIT_DEFAULT = 12;
+const FIXED_TIMESTAMP = "Dec 19, 2025";
 
-// WITH logic (matches your person-page style)
-const WITH_MIN_CONF = 98.8;
-const WITH_PAGE_WINDOW = 1;
+const MIN_CONF_OWNER = 99;
+const WITH_MIN_CONF = 98;
 const WITH_MAX = 6;
 
-// ---- deterministic RNG (stable pagination mixing) ----
-function xmur3(str: string) {
-  let h = 1779033703 ^ str.length;
-  for (let i = 0; i < str.length; i++) {
-    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
-    h = (h << 13) | (h >>> 19);
-  }
-  return function () {
-    h = Math.imul(h ^ (h >>> 16), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    h ^= h >>> 16;
-    return h >>> 0;
-  };
+const PHOTOS_CDN = process.env.NEXT_PUBLIC_PHOTOS_CDN || "https://assets.getkino.com";
+
+function photoThumbUrl(id: string, width = 900) {
+  return `${PHOTOS_CDN}/cdn-cgi/image/width=${width},quality=80,format=auto/photos-deboned/${id}`;
+}
+function photoFullUrl(id: string) {
+  return `${PHOTOS_CDN}/photos/${id}`;
 }
 
-function mulberry32(seed: number) {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+const nameCache = createTtlCache<Map<string, string>>();
 
-function shuffleInPlace<T>(arr: T[], rand: () => number) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+async function getSlugToNameMap(): Promise<Map<string, string>> {
+  const k = "people:slugToName:v1";
+  const hit = nameCache.get(k);
+  if (hit) return hit;
 
-
-const avatarCache = createTtlCache<string | null>();
-
-async function getAvatarForName(name: string): Promise<string> {
-  const k = `wd-avatar:${name}`;
-
-  const hit = avatarCache.get(k);
-  if (hit !== null && hit !== undefined) return hit || "";
-
-  const v = await avatarCache.once(k, async () => {
-    const wd = await fetchWikidataProfileByName(name).catch(() => null);
-    const img = (wd as any)?.imageUrl;
-    return avatarCache.set(k, typeof img === "string" ? img : null, 24 * 60 * 60_000);
+  return nameCache.once(k, async () => {
+    const rows = await q<{ id: string; name: string | null; anon_id: number | null }>`
+      SELECT id, name, anon_id
+      FROM people
+    `;
+    const map = new Map<string, string>();
+    for (const r of rows) {
+      map.set(r.id, r.name ?? (r.anon_id != null ? `Person ${r.anon_id}` : r.id));
+    }
+    return nameCache.set(k, map, 30 * 60_000);
   });
-
-  return v || "";
 }
 
-type Item = { file: string; previewPage: number; pages: number[] };
-
-function buildPagePeopleIndex(args: {
-  allCelebs: ReturnType<typeof getAllCelebrities>;
-  keysSet: Set<string>;
-}) {
-  const { allCelebs, keysSet } = args;
-
-  const byFile = new Map<string, Map<number, Map<string, number>>>();
-
-  for (const c of allCelebs) {
-    const slug = slugifyName(c.name);
-    if (isBannedAuthorSlug(slug)) continue;
-
-    for (const a of ((c.appearances as any as Appearance[]) || [])) {
-      if (!a?.file || !a?.page) continue;
-      if (!keysSet.has(a.file)) continue;
-
-      let pages = byFile.get(a.file);
-      if (!pages) {
-        pages = new Map();
-        byFile.set(a.file, pages);
-      }
-
-      let people = pages.get(a.page);
-      if (!people) {
-        people = new Map();
-        pages.set(a.page, people);
-      }
-
-      const prev = people.get(slug) ?? 0;
-      const next = conf(a);
-      if (next > prev) people.set(slug, next);
-    }
-  }
-
-  return byFile;
+async function getAuthorAvatarPhotoId(authorSlug: string): Promise<string | null> {
+  const rows = await q<{ photo_id: string | null }>`
+    WITH ranked AS (
+      SELECT
+        pf.photo_id,
+        COUNT(*) AS n,
+        AVG(COALESCE(pf.celebrity_confidence, pf.confidence, 0)) AS avg_conf,
+        ROW_NUMBER() OVER (
+          ORDER BY COUNT(*) DESC,
+                   AVG(COALESCE(pf.celebrity_confidence, pf.confidence, 0)) DESC,
+                   pf.photo_id ASC
+        ) AS rn
+      FROM photo_faces pf
+      JOIN photos ph ON ph.id = pf.photo_id
+      WHERE pf.person_id = ${authorSlug}
+        AND COALESCE(pf.celebrity_confidence, pf.confidence, 0) >= ${MIN_CONF_OWNER}
+        AND (ph.redacted IS NULL OR ph.redacted = false)
+      GROUP BY pf.photo_id
+    )
+    SELECT photo_id
+    FROM ranked
+    WHERE rn = 1
+    LIMIT 1
+  `;
+  return rows[0]?.photo_id ?? null;
 }
 
-function coPeopleForPost(args: {
-  byFile: Map<string, Map<number, Map<string, number>>>;
-  file: string;
-  page: number;
-  ownerSlug: string;
-  slugToName: Map<string, string>;
-  minConfOther: number;
-  pageWindow: number;
-  maxPeople: number;
-}): WithPerson[] {
-  const { byFile, file, page, ownerSlug, slugToName, minConfOther, pageWindow, maxPeople } = args;
-
-  const pages = byFile.get(file);
-  if (!pages) return [];
-
-  const agg = new Map<string, number>();
-
-  for (let q = page - pageWindow; q <= page + pageWindow; q++) {
-    const people = pages.get(q);
-    if (!people) continue;
-
-    for (const [otherSlug, otherConf] of people.entries()) {
-      if (otherSlug === ownerSlug) continue;
-      if (otherConf < minConfOther) continue;
-      const prev = agg.get(otherSlug) ?? 0;
-      if (otherConf > prev) agg.set(otherSlug, otherConf);
-    }
-  }
-
-  return Array.from(agg.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxPeople)
-    .map(([s]) => ({ slug: s, name: slugToName.get(s) ?? s }));
-}
+type AuthorRow = { id: string; name: string | null; photo_count: number };
+type PhotoRow = {
+  id: string;
+  original_filename: string;
+  source: string;
+  release_batch: string | null;
+  source_url: string | null;
+};
+type WithRow = { id: string; name: string | null; anon_id: number | null; c: number };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const cursor = Math.max(0, Number(req.query.cursor || 0));
@@ -165,140 +105,125 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
-  const all = getAllCelebrities();
+  const people = await q<AuthorRow>`
+    SELECT
+      p.id,
+      p.name,
+      COUNT(DISTINCT pf.photo_id)::int AS photo_count
+    FROM people p
+    JOIN photo_faces pf ON pf.person_id = p.id
+    JOIN photos ph ON ph.id = pf.photo_id
+    WHERE (ph.redacted IS NULL OR ph.redacted = false)
+      AND COALESCE(pf.celebrity_confidence, pf.confidence, 0) >= ${MIN_CONF_OWNER}
+    GROUP BY p.id
+    HAVING COUNT(DISTINCT pf.photo_id) > 0
+    ORDER BY COUNT(DISTINCT pf.photo_id) DESC, p.id ASC
+    LIMIT 400
+  `;
 
-  const slugToName = new Map<string, string>();
-  for (const c of all) slugToName.set(slugifyName(c.name), c.name);
+  const authors = people
+    .map((p) => ({ slug: p.id, name: p.name ?? p.id }))
+    .filter((p) => !isBannedAuthorSlug(p.slug));
 
-  const queues = new Map<string, { author: string; items: Item[] }>();
-
-  for (const c of all) {
-    const authorSlug = slugifyName(c.name);
-    if (isBannedAuthorSlug(authorSlug)) continue;
-
-    const apps = (c.appearances as Appearance[]) || [];
-    const hi = apps.filter((a) => !!a?.file && !!a?.page && (a.confidence ?? 0) >= MIN_CONF);
-    if (!hi.length) continue;
-
-    const byFile = new Map<string, Appearance[]>();
-    for (const a of hi) {
-      const arr = byFile.get(a.file);
-      if (arr) arr.push(a);
-      else byFile.set(a.file, [a]);
-    }
-
-    const items: Item[] = [];
-    for (const [file, arr] of byFile.entries()) {
-      const previewPage = chooseBestPage(arr);
-      const pages = arr.map((x) => x.page).sort((m, n) => m - n);
-      items.push({ file, previewPage, pages });
-    }
-
-    items.sort((a, b) => parseEftaId(b.file) - parseEftaId(a.file));
-
-    queues.set(authorSlug, { author: c.name, items });
-  }
-
-  const authors = Array.from(queues.keys());
   if (!authors.length) {
     res.status(200).json({ posts: [], nextCursor: null });
     return;
   }
 
-  const seedFn = xmur3(`feed:v1:${cursor}`);
-  const rand = mulberry32(seedFn());
+  const slugToName = await getSlugToNameMap();
 
-  const idx = new Map<string, number>();
-  for (const s of authors) idx.set(s, 0);
+  const avatarPairs = await Promise.all(
+    authors.map(async (a) => {
+      const pid = await getAuthorAvatarPhotoId(a.slug);
+      return [a.slug, pid ? photoThumbUrl(pid, 256) : ""] as const;
+    })
+  );
+  const avatarBySlug = new Map<string, string>(avatarPairs);
 
-  function nextAuthorRound(): string | null {
-    const round = shuffleInPlace([...authors], rand);
-    for (const s of round) {
-      const q = queues.get(s)!;
-      const i = idx.get(s)!;
-      if (i < q.items.length) return s;
-    }
-    return null;
-  }
-
-  let produced = 0;
-  while (produced < cursor) {
-    const s = nextAuthorRound();
-    if (!s) break;
-    idx.set(s, (idx.get(s) || 0) + 1);
-    produced++;
+  async function getAuthorPhotoAt(authorSlug: string, k: number) {
+    const rows = await q<PhotoRow>`
+      SELECT ph.id, ph.original_filename, ph.source, ph.release_batch, ph.source_url
+      FROM photos ph
+      JOIN photo_faces pf ON pf.photo_id = ph.id
+      WHERE (ph.redacted IS NULL OR ph.redacted = false)
+        AND pf.person_id = ${authorSlug}
+        AND COALESCE(pf.celebrity_confidence, pf.confidence, 0) >= ${MIN_CONF_OWNER}
+      GROUP BY ph.id, ph.original_filename, ph.source, ph.release_batch, ph.source_url
+      ORDER BY ph.id ASC
+      OFFSET ${Math.max(0, k)}
+      LIMIT 1
+    `;
+    return rows[0] ?? null;
   }
 
   const out: FeedPost[] = [];
+  let produced = 0;
+
+  const perAuthorIdx = new Map<string, number>();
+  for (const a of authors) perAuthorIdx.set(a.slug, 0);
+
+  while (produced < cursor) {
+    const a = authors[produced % authors.length]!;
+    perAuthorIdx.set(a.slug, (perAuthorIdx.get(a.slug) || 0) + 1);
+    produced++;
+  }
 
   while (out.length < limit) {
-    const s = nextAuthorRound();
-    if (!s) break;
+    const a = authors[produced % authors.length]!;
+    const k = perAuthorIdx.get(a.slug) || 0;
 
-    const q = queues.get(s)!;
-    const i = idx.get(s)!;
-    const it = q.items[i];
-    idx.set(s, i + 1);
+    const ph = await getAuthorPhotoAt(a.slug, k);
+    perAuthorIdx.set(a.slug, k + 1);
+    produced++;
 
-    const shown = it.pages.slice(0, 8);
-    const pageHint = shown.length ? `Pages: ${shown.join(", ")}${it.pages.length > shown.length ? "…" : ""}` : "";
-    const efta = it.file.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? it.file.split("/").pop() ?? it.file;
+    if (!ph) continue;
+
+    const withRows = await q<WithRow>`
+      SELECT
+        p.id,
+        p.name,
+        p.anon_id,
+        MAX(COALESCE(pf.celebrity_confidence, pf.confidence, 0)) AS c
+      FROM photo_faces pf
+      JOIN people p ON p.id = pf.person_id
+      WHERE pf.photo_id = ${ph.id}
+        AND pf.person_id IS NOT NULL
+        AND pf.person_id <> ${a.slug}
+        AND COALESCE(pf.celebrity_confidence, pf.confidence, 0) >= ${WITH_MIN_CONF}
+      GROUP BY p.id, p.name, p.anon_id
+      ORDER BY c DESC, p.id ASC
+      LIMIT ${WITH_MAX}
+    `;
+
+    const withPeople: WithPerson[] = withRows.map((r) => ({
+      slug: r.id,
+      name: r.name ?? (r.anon_id != null ? `Person ${r.anon_id}` : r.id),
+    }));
+
+    const likedBySlugs = pickLikedBy(ph.id, 3);
+    const likedBy: LikedByPerson[] = likedBySlugs.map((s) => ({
+      slug: s,
+      name: slugToName.get(s) ?? s,
+    }));
 
     out.push({
-      key: it.file,
-      url: fileUrl(it.file),
+      key: ph.id,
+      url: photoFullUrl(ph.id),
       timestamp: FIXED_TIMESTAMP,
-      content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${it.previewPage}`,
-      author: q.author,
-      authorSlug: s,
-      authorAvatar: "",
+      content: ph.original_filename || ph.id,
 
-      imageUrl: fileUrl(thumbnailKeyForPdf(it.file)),
-      hqImageUrl: pageJpegUrlFast(it.file, it.previewPage),
+      author: slugToName.get(a.slug) ?? a.name,
+      authorSlug: a.slug,
+      authorAvatar: avatarBySlug.get(a.slug) ?? "",
+
+      imageUrl: photoThumbUrl(ph.id, 900),
+      hqImageUrl: photoFullUrl(ph.id),
+
+      withPeople,
+      likedBy,
     });
   }
 
-  const uniqAuthorNames = Array.from(new Set(out.map((p) => p.author)));
-  const avatarPairs = await Promise.all(
-    uniqAuthorNames.map(async (name) => [name, await getAvatarForName(name)] as const)
-  );
-  const avatarByName = new Map<string, string>(avatarPairs);
-
-  const keysSet = new Set(out.map((p) => p.key));
-  const byFile = buildPagePeopleIndex({ allCelebs: all, keysSet });
-
-  const posts = out.map((p) => {
-    const previewPage = Number((p.content.match(/Page (\d+)/)?.[1] ?? "1")) || 1;
-
-    const likedBySlugs = pickLikedBy(p.key, 3);
-
-    const likedBy = likedBySlugs.map((slug) => {
-      const c = getCelebrityBySlug(slug);
-      return {
-        slug,
-        name: c?.name ?? slug,
-      };
-    });
-
-    const withPeople = coPeopleForPost({
-      byFile,
-      file: p.key,
-      page: previewPage,
-      ownerSlug: p.authorSlug,
-      slugToName,
-      minConfOther: WITH_MIN_CONF,
-      pageWindow: WITH_PAGE_WINDOW,
-      maxPeople: WITH_MAX,
-    });
-
-    return {
-      ...p,
-      likedBy,
-      authorAvatar: avatarByName.get(p.author) ?? "",
-      withPeople,
-    };
-  });
-
-  const nextCursor = posts.length === 0 ? null : String(cursor + posts.length);
-  res.status(200).json({ posts, nextCursor });
+  const nextCursor = out.length === 0 ? null : String(cursor + out.length);
+  res.status(200).json({ posts: out, nextCursor });
 }

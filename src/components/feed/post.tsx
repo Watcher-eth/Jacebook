@@ -83,7 +83,7 @@ export function NewsFeedPost({
   }, [hqImageUrl, didUpgrade, priorityImage]);
 
   return (
-    <div ref={ref} className="rounded-lg ">
+    <div ref={ref} className="rounded-lg w-full">
       <div className="p-3 pb-0 bg-white shadow-b-md rounded-lg">
         <div className="flex items-start justify-between mb-2">
           <div className="flex gap-2 items-center">

@@ -9,7 +9,6 @@ export default function App({ Component, pageProps }: AppProps) {
   return (
     <main className={lucidaGrant.variable}>
       <CustomHead router={router} pageProps={pageProps} />
-
       <Component {...pageProps} />
     </main>
   )

@@ -22,8 +22,6 @@ type FeedPost = {
   withPeople?: WithPerson[]; 
 };
 
-
-
 export default function NewsFeedPage() {
   const [posts, setPosts] = React.useState<FeedPost[]>([]);
   const [cursor, setCursor] = React.useState<string | null>("0");

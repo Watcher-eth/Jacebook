@@ -4,7 +4,7 @@ const defaultYears = ["Recent", "2015", "2014", "2013", "2012", "2011", "2010", 
 export function TimelineSection({ years = defaultYears }: { years?: string[] }) {
   return (
     <div className="relative">
-      <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border" />
+      <div className="absolute left-0 top-0 bottom-0  bg-border" />
       <div className="pl-4 space-y-1">
         {years.map((year, index) => (
           <button

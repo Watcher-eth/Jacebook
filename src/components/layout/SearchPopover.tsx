@@ -5,10 +5,6 @@ import { useRouter } from "next/router";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { getAllCelebrities, slugifyName } from "@/lib/people";
-import type { CelebrityAppearance } from "@/lib/celebrityData";
-import { fileUrl } from "@/lib/workerClient";
-
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,65 +20,15 @@ function initialsFromName(name: string) {
   return (a + b).toUpperCase();
 }
 
-type Appearance = { file: string; page: number; confidence?: number };
+type PersonSearchRow = { slug: string; name: string; avatarUrl?: string };
 
-function conf(a: Appearance) {
-  return typeof a.confidence === "number" ? a.confidence : 0;
-}
-
-function pickTopAppearances(appearances: Appearance[], minConf: number, n: number) {
-  const hi = (appearances || []).filter((a) => a?.file && a?.page && conf(a) >= minConf);
-  hi.sort((a, b) => {
-    const dc = conf(b) - conf(a);
-    if (dc !== 0) return dc;
-    return (a.page ?? 999999) - (b.page ?? 999999);
-  });
-
-  const out: Appearance[] = [];
-  const seen = new Set<string>();
-  for (const a of hi) {
-    const k = `${a.file}::${a.page}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(a);
-    if (out.length >= n) break;
-  }
-  return out;
-}
-
-function pageJpegKeyFast(pdfKey: string, page: number) {
-  const base = pdfKey.replace(/\.pdf$/i, "");
-  const p = String(page).padStart(3, "0");
-  return `pdfs-as-jpegs/${base}/page-${p}.jpg`;
-}
-
-function avatarUrlForCelebrity(appearances: CelebrityAppearance[] | any, minConf = 99.7) {
-  const top = pickTopAppearances((appearances || []) as any as Appearance[], minConf, 1)[0];
-  if (!top) return null;
-  return fileUrl(pageJpegKeyFast(top.file, top.page));
-}
-
-function pickTopPeople(q: string, limit = 8) {
-  const query = normalize(q);
-  if (!query) return [];
-
-  const all = getAllCelebrities();
-  return all
-    .map((p) => {
-      const n = normalize(p.name || "");
-      let score = 0;
-      if (n === query) score = 100;
-      else if (n.startsWith(query)) score = 80;
-      else if (n.includes(query)) score = 50;
-      return { p, score };
-    })
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || a.p.name.localeCompare(b.p.name))
-    .slice(0, limit)
-    .map((x) => ({
-      ...x,
-      avatarUrl: avatarUrlForCelebrity(x.p.appearances as any),
-    }));
+function useDebouncedValue<T>(value: T, ms: number) {
+  const [v, setV] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setV(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return v;
 }
 
 export function PeopleSearchPopover(props: { className?: string; inputClassName?: string }) {
@@ -94,7 +40,41 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
   const [q, setQ] = React.useState("");
   const [active, setActive] = React.useState(0);
 
-  const results = React.useMemo(() => pickTopPeople(q, 8), [q]);
+  const dq = useDebouncedValue(q, 120);
+  const hasQuery = dq.trim().length > 0;
+
+  const [results, setResults] = React.useState<PersonSearchRow[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    const query = normalize(dq);
+    if (!query) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
+    const ac = new AbortController();
+    setLoading(true);
+
+    (async () => {
+      try {
+        const r = await fetch(
+          `/api/people/search?q=${encodeURIComponent(query)}&limit=8`,
+          { signal: ac.signal }
+        );
+        if (!r.ok) throw new Error(`search failed: ${r.status}`);
+        const json = (await r.json()) as { people: PersonSearchRow[] };
+        setResults(Array.isArray(json.people) ? json.people : []);
+      } catch (e: any) {
+        if (e?.name !== "AbortError") setResults([]);
+      } finally {
+        if (!ac.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
+  }, [dq]);
 
   function close() {
     setOpen(false);
@@ -108,10 +88,11 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
     router.push(`/search?q=${encodeURIComponent(s)}`);
   }
 
-  function goToPerson(name: string) {
-    const slug = slugifyName(name);
+  function goToPersonSlug(slug: string) {
+    const s = String(slug || "").trim();
+    if (!s) return;
     close();
-    router.push(`/u/${slug}`);
+    router.push(`/u/${s}`);
   }
 
   const handleOpenChange = React.useCallback((v: boolean) => {
@@ -120,8 +101,6 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
     if (!v && focused) return;
     setOpen(v);
   }, []);
-
-  const hasQuery = q.trim().length > 0;
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -162,8 +141,9 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
               }
               if (e.key === "Enter") {
                 e.preventDefault();
-                if (results[active]?.p?.name) goToPerson(results[active].p.name);
-                else if (hasQuery) goToSearch(q);
+                const hit = results[active];
+                if (hit?.slug) goToPersonSlug(hit.slug);
+                else if (hasQuery) goToSearch(dq);
               }
             }}
           />
@@ -190,10 +170,10 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
             type="button"
             className="w-full px-3 py-2 text-left text-sm hover:bg-muted border-b border-border"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => hasQuery && goToSearch(q)}
+            onClick={() => hasQuery && goToSearch(dq)}
             disabled={!hasQuery}
           >
-            See results for <span className="font-semibold">{hasQuery ? q : "…"}</span>
+            See results for <span className="font-semibold">{hasQuery ? dq : "…"}</span>
           </button>
 
           <div className="py-1">
@@ -203,18 +183,19 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
 
             {!hasQuery ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">Type a name…</div>
+            ) : loading ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">Searching…</div>
             ) : results.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">No people found.</div>
             ) : (
               <div className="flex flex-col">
                 {results.map((row, idx) => {
-                  const name = row.p.name;
                   const isActive = idx === active;
+                  const name = row.name;
 
-                  if(row.avatarUrl)
                   return (
                     <button
-                      key={name}
+                      key={row.slug}
                       type="button"
                       className={cn(
                         "w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-3",
@@ -222,7 +203,7 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
                       )}
                       onMouseEnter={() => setActive(idx)}
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => goToPerson(name)}
+                      onClick={() => goToPersonSlug(row.slug)}
                     >
                       <Avatar className="h-9 w-9 rounded-sm overflow-hidden">
                         <AvatarImage
@@ -232,7 +213,9 @@ export function PeopleSearchPopover(props: { className?: string; inputClassName?
                             (e.currentTarget as HTMLImageElement).src = "";
                           }}
                         />
-                        <AvatarFallback className="rounded-sm">{initialsFromName(name)}</AvatarFallback>
+                        <AvatarFallback className="rounded-sm">
+                          {initialsFromName(name)}
+                        </AvatarFallback>
                       </Avatar>
 
                       <div className="min-w-0 flex-1">

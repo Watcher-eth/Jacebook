@@ -2,7 +2,7 @@
 
 export function CreatePost() {
   return (
-    <div className=" px-0 gap-0  bg-white rounded-md border shadow-xs">
+    <div className="px-0 gap-0  bg-white rounded-md border shadow-xs">
       <div className="flex p-3  items-center bg-gray-100 gap-3 mb-2 border-b border-border/20 px-3 pb-1">
         <div className="flex items-center hover:bg-primary/5 hover:text-primary  text-sm gap-1 mr-1 hover:scale-101 transition-all">
           <img src="../icons/Write.png" className="h-4.5 w-4.5 rounded font-semibold flex items-center justify-center" />

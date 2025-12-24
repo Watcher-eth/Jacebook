@@ -9,8 +9,8 @@ import { FriendsSection } from "@/components/profile/friends";
 import { ProfileHeader, ProfileTab } from "@/components/profile/header";
 import { TimelineSection } from "@/components/profile/timeline";
 
-import { getCelebrityBySlug } from "@/lib/people";
-import { fileUrl, pageJpegUrlFast, parseEftaId, thumbnailKeyForPdf } from "@/lib/workerClient";
+import { getPersonById, getTopPhotosForPerson, getPostsForPerson } from "@/lib/people";
+import { photoFullUrl, photoThumbUrl } from "@/lib/photos-urls";
 
 import { LikedByPerson, NewsFeedPost } from "@/components/feed/post";
 import { AboutSection } from "@/components/profile/aboutSection";
@@ -18,7 +18,6 @@ import { PhotoGrid } from "@/components/profile/photoGrid";
 import { FriendGrid } from "@/components/profile/friendGrid";
 import type { WikidataProfile } from "@/lib/wikidata";
 import { useJson } from "@/components/hooks/useJson"
-import { chooseBestPage, conf } from "@/lib/appearances"
 
 type WithPerson = { name: string; slug: string };
 
@@ -57,124 +56,54 @@ type PageProps = {
   wikidataName: string;
 };
 
-type Appearance = { file: string; page: number; confidence?: number };
-
-function unique<T>(arr: T[]) {
-  return Array.from(new Set(arr));
-}
-
-
-function pickTopAppearances(appearances: Appearance[], minConf: number, n: number) {
-  const hi = (appearances || []).filter((a) => a?.file && a?.page && conf(a) >= minConf);
-  hi.sort((a, b) => {
-    const dc = conf(b) - conf(a);
-    if (dc !== 0) return dc;
-    return (a.page ?? 999999) - (b.page ?? 999999);
-  });
-
-  const out: Appearance[] = [];
-  const seen = new Set<string>();
-  for (const a of hi) {
-    const k = `${a.file}::${a.page}`;
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(a);
-    if (out.length >= n) break;
-  }
-  return out;
-}
-
-const MIN_CONF = 99.7;
 const SSR_POST_LIMIT = 12;
-const FIXED_TIMESTAMP = "Dec 19, 2025";
-const FIXED_YEARS = ["Recent"];
 
 
 export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => {
-  const slug = String(ctx.params?.slug || "");
-  const celeb = getCelebrityBySlug(slug);
-  if (!celeb) return { notFound: true };
+  const slug = String(ctx.params?.slug || "").trim();
+  if (!slug) return { notFound: true };
 
   ctx.res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
 
-  const hi = (celeb.appearances as Appearance[]).filter((a) => (a.confidence ?? 0) >= MIN_CONF);
+  const person = await getPersonById(slug);
+  if (!person) return { notFound: true };
 
-  const hiByFile = new Map<string, Appearance[]>();
-  for (const a of hi) {
-    const arr = hiByFile.get(a.file);
-    if (arr) arr.push(a);
-    else hiByFile.set(a.file, [a]);
-  }
+  // pick avatar + cover from top photos
+  const top2 = await getTopPhotosForPerson({ personId: person.id, limit: 2, minConf: 98 });
+  const pfp = top2[0]?.id ?? null;
+  const cover = top2[1]?.id ?? top2[0]?.id ?? null;
 
-  const keysAll = unique(hi.map((a) => a.file));
-  if (!keysAll.length) {
-    return {
-      props: {
-        slug,
-        name: celeb.name,
-        count: celeb.count,
-        years: FIXED_YEARS,
-        profileAvatarUrl: "",
-        coverUrl: "",
-        posts: [],
-        nextCursor: null,
-        wikidataName: celeb.name,
-      },
-    };
-  }
+  const profileAvatarUrl = pfp ? photoThumbUrl(pfp, 256) : "";
+  const coverUrl = cover ? photoThumbUrl(cover, 1024) : profileAvatarUrl;
 
-  const top2 = pickTopAppearances(celeb.appearances as Appearance[], MIN_CONF, 2);
-  const pfpA = top2[0] ?? null;
-  const coverA = top2[1] ?? top2[0] ?? null;
+  const { rows, nextCursor } = await getPostsForPerson({
+    personId: person.id,
+    cursor: null,
+    limit: SSR_POST_LIMIT,
+    minConf: 98,
+  });
 
-  const fallbackThumb = fileUrl(thumbnailKeyForPdf(keysAll[0]!));
-  const profileAvatarUrl = pfpA ? pageJpegUrlFast(pfpA.file, pfpA.page) : fallbackThumb;
-  const coverUrl = coverA ? pageJpegUrlFast(coverA.file, coverA.page) : profileAvatarUrl;
-
-  const docsKeysSorted = [...keysAll].sort((a, b) => parseEftaId(b) - parseEftaId(a));
-  const ssrKeys = docsKeysSorted.slice(0, SSR_POST_LIMIT);
-
-  const posts: PagePost[] = ssrKeys
-    .map((key) => {
-      const appearancesInFile = hiByFile.get(key) ?? [];
-      const previewPage = chooseBestPage(appearancesInFile);
-
-      const pages = appearancesInFile.map((a) => a.page).sort((x, y) => x - y);
-      const shown = pages.slice(0, 8);
-      const pageHint = shown.length ? `Pages: ${shown.join(", ")}${pages.length > shown.length ? "…" : ""}` : "";
-
-      const efta = key.match(/(EFTA\d+)\.pdf$/i)?.[1]?.toUpperCase() ?? key.split("/").pop() ?? key;
-
-      const thumbUrl = fileUrl(thumbnailKeyForPdf(key));
-      const hqUrl = pageJpegUrlFast(key, previewPage);
-
-      return {
-        key,
-        url: fileUrl(key),
-        timestamp: FIXED_TIMESTAMP,
-        authorAvatar: profileAvatarUrl,
-        content: `${efta}${pageHint ? ` • ${pageHint}` : ""} • Page ${previewPage}`,
-        imageUrl: thumbUrl,      
-        hqImageUrl: hqUrl,   
-
-      
-      };
-    })
-    .reverse();
-
-  const nextCursor = docsKeysSorted.length > SSR_POST_LIMIT ? String(SSR_POST_LIMIT) : null;
+  const posts: PagePost[] = rows.map((p) => ({
+    key: p.id,
+    url: photoFullUrl(p.id),
+    timestamp: p.created_at ? new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—",
+    authorAvatar: profileAvatarUrl,
+    content: [p.source, p.release_batch, p.original_filename || p.id].filter(Boolean).join(" • "),
+    imageUrl: photoThumbUrl(p.id, 512),
+    hqImageUrl: photoFullUrl(p.id),
+  }));
 
   return {
     props: {
       slug,
-      name: celeb.name,
-      count: celeb.count,
-      years: FIXED_YEARS,
+      name: person.name ?? slug,       // or `Person ${anon_id}` if you prefer
+      count: 0,                         // optional: you can compute photo_count similarly
+      years: ["Recent"],
       profileAvatarUrl,
       coverUrl,
       posts,
       nextCursor,
-      wikidataName: celeb.name,
+      wikidataName: person.name ?? slug,
     },
   };
 };
@@ -194,7 +123,7 @@ export default function PersonPage(props: InferGetServerSidePropsType<typeof get
   const postKeys = React.useMemo(() => feedPosts.map((p) => p.key), [feedPosts]);
   const withRes = useJson<{ withByKey: Record<string, WithPerson[]> }>(
     postKeys.length
-      ? `/api/people/with-people?slug=${encodeURIComponent(slug)}&keys=${encodeURIComponent(postKeys.join(","))}`
+      ? `/api/people/withPeople?slug=${encodeURIComponent(slug)}&keys=${encodeURIComponent(postKeys.join(","))}`
       : null
   );
 
@@ -289,10 +218,11 @@ const photos = React.useMemo(() => {
               friends={friendsRes.data?.friends ?? []}
               loading={friendsRes.loading}
               name={slug}
+              onShowAll={() => setTab("friends")}
             />
           </aside>
 
-          <main className="space-y-4 min-w-0">
+          <main className="space-y-4 min-w-xl">
             {tab === "timeline" && (
               <>
                 {/* CreatePost only on timeline (mobile + desktop) */}

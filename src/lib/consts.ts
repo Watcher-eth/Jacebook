@@ -1,8 +1,3 @@
-export const WORKER_URL = (() => {
-    const v = process.env.NEXT_PUBLIC_WORKER_URL;
-    if (!v) throw new Error("Missing NEXT_PUBLIC_WORKER_URL in .env.local");
-    return v.replace(/\/$/, "");
-  })();
 
   export const BANNED_AUTHOR_SLUGS = new Set<string>([
     "jeffrey-epstein", "albert-einstein", "marilyn-monroe", "emily-elizabeth-dickinson", "william-butler-yeats"
