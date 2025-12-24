@@ -1,4 +1,5 @@
 // pages/api/people/posts.ts
+import { getAvatarPhotoIdMap } from "@/lib/avatars"
 import { getPersonById, getPostsForPerson, type PhotoPostRow } from "@/lib/people";
 import { photoFullUrl, photoThumbUrl } from "@/lib/photos-urls";
 import type { NextApiRequest, NextApiResponse } from "next";
@@ -28,6 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const limit = Math.min(50, Math.max(6, Number(req.query.limit || 12)));
 
   const person = await getPersonById(slug);
+  const avatarMap = await getAvatarPhotoIdMap([slug]);
+  const pid = avatarMap.get(slug);
+  const authorAvatar = pid ? photoThumbUrl(pid, 256) : "";
   if (!person) return res.status(404).json({ posts: [], nextCursor: null });
 
   res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=86400");
@@ -46,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
       : "—",
     content: labelFor(p),
-    authorAvatar: "",
+    authorAvatar,
     imageUrl: photoThumbUrl(p.id, 512),
     hqImageUrl: photoFullUrl(p.id),
   }));

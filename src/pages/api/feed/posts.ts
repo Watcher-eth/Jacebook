@@ -5,6 +5,7 @@ import { isBannedAuthorSlug } from "@/lib/consts";
 import { createTtlCache } from "@/lib/apiCache";
 import { pickLikedBy } from "@/lib/likedBy";
 import { q } from "@/lib/db";
+import { getAvatarPhotoIdMap } from "@/lib/avatars";
 
 type WithPerson = { name: string; slug: string };
 type LikedByPerson = { name: string; slug: string };
@@ -62,33 +63,6 @@ async function getSlugToNameMap(): Promise<Map<string, string>> {
   });
 }
 
-async function getAuthorAvatarPhotoId(authorSlug: string): Promise<string | null> {
-  const rows = await q<{ photo_id: string | null }>`
-    WITH ranked AS (
-      SELECT
-        pf.photo_id,
-        COUNT(*) AS n,
-        AVG(COALESCE(pf.celebrity_confidence, pf.confidence, 0)) AS avg_conf,
-        ROW_NUMBER() OVER (
-          ORDER BY COUNT(*) DESC,
-                   AVG(COALESCE(pf.celebrity_confidence, pf.confidence, 0)) DESC,
-                   pf.photo_id ASC
-        ) AS rn
-      FROM photo_faces pf
-      JOIN photos ph ON ph.id = pf.photo_id
-      WHERE pf.person_id = ${authorSlug}
-        AND COALESCE(pf.celebrity_confidence, pf.confidence, 0) >= ${MIN_CONF_OWNER}
-        AND (ph.redacted IS NULL OR ph.redacted = false)
-      GROUP BY pf.photo_id
-    )
-    SELECT photo_id
-    FROM ranked
-    WHERE rn = 1
-    LIMIT 1
-  `;
-  return rows[0]?.photo_id ?? null;
-}
-
 type AuthorRow = { id: string; name: string | null; photo_count: number };
 type PhotoRow = {
   id: string;
@@ -132,13 +106,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const slugToName = await getSlugToNameMap();
 
-  const avatarPairs = await Promise.all(
-    authors.map(async (a) => {
-      const pid = await getAuthorAvatarPhotoId(a.slug);
-      return [a.slug, pid ? photoThumbUrl(pid, 256) : ""] as const;
-    })
-  );
-  const avatarBySlug = new Map<string, string>(avatarPairs);
+  // ✅ one cached lookup for all authors (7 days in lib/avatars)
+  const authorSlugs = authors.map((a) => a.slug);
+  const avatarPhotoIdBySlug = await getAvatarPhotoIdMap(authorSlugs);
+
+  function avatarUrlFor(slug: string) {
+    const pid = avatarPhotoIdBySlug.get(slug);
+    return pid ? photoThumbUrl(pid, 256) : "";
+  }
 
   async function getAuthorPhotoAt(authorSlug: string, k: number) {
     const rows = await q<PhotoRow>`
@@ -214,7 +189,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       author: slugToName.get(a.slug) ?? a.name,
       authorSlug: a.slug,
-      authorAvatar: avatarBySlug.get(a.slug) ?? "",
+      authorAvatar: avatarUrlFor(a.slug),
 
       imageUrl: photoThumbUrl(ph.id, 900),
       hqImageUrl: photoFullUrl(ph.id),

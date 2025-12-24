@@ -1,6 +1,6 @@
 // src/lib/people.ts
 import { q, sql } from "@/lib/db";
-
+import { getAvatarPhotoIdMap } from "@/lib/avatars";
 
 export type FriendEdge = {
   slug: string;
@@ -117,7 +117,7 @@ export async function getTopPhotosForPerson(args: {
   limit: number;
   minConf?: number;
 }): Promise<PhotoPostRow[]> {
-  const minConf = args.minConf ?? 98;
+  const minConf = args.minConf ?? 99;
 
   const rows = await q<PhotoPostRow>`
     WITH ranked AS (
@@ -220,6 +220,7 @@ export async function getWithPeopleByPhotoIds(photoIds: string[], ownerPersonId:
 // Friends
 // =========================
 
+
 export async function getFriendsForPerson(args: {
   personId: string;
   limit?: number;
@@ -232,7 +233,6 @@ export async function getFriendsForPerson(args: {
     slug: string;
     name: string | null;
     weight: number;
-    avatar_photo_id: string | null;
   }>`
     WITH my_photos AS (
       SELECT DISTINCT pf.photo_id
@@ -252,39 +252,28 @@ export async function getFriendsForPerson(args: {
       GROUP BY pf.person_id
       ORDER BY weight DESC, pf.person_id ASC
       LIMIT ${limit}
-    ),
-    avatars AS (
-      SELECT
-        pf.person_id,
-        pf.photo_id,
-        ROW_NUMBER() OVER (
-          PARTITION BY pf.person_id
-          ORDER BY COUNT(*) DESC, AVG(${faceConfExpr()}) DESC, pf.photo_id ASC
-        ) AS rn
-      FROM photo_faces pf
-      JOIN photos ph ON ph.id = pf.photo_id
-      WHERE pf.person_id IS NOT NULL
-        AND (ph.redacted IS NULL OR ph.redacted = false)
-      GROUP BY pf.person_id, pf.photo_id
     )
     SELECT
       e.other_id AS slug,
       pe.name,
-      e.weight,
-      av.photo_id AS avatar_photo_id
+      e.weight
     FROM edges e
     JOIN people pe ON pe.id = e.other_id
-    LEFT JOIN avatars av
-      ON av.person_id = e.other_id AND av.rn = 1
     ORDER BY e.weight DESC, e.other_id ASC
   `;
 
-  return rows.map((r) => ({
-    slug: r.slug,
-    name: r.name ?? r.slug,
-    weight: r.weight,
-    avatarUrl: r.avatar_photo_id ? photoThumbUrl(r.avatar_photo_id, 256) : undefined,
-  }));
+  const slugs = rows.map((r) => r.slug);
+  const avatarMap = await getAvatarPhotoIdMap(slugs);
+
+  return rows.map((r) => {
+    const pid = avatarMap.get(r.slug);
+    return {
+      slug: r.slug,
+      name: r.name ?? r.slug,
+      weight: r.weight,
+      avatarUrl: pid ? photoThumbUrl(pid, 256) : undefined,
+    };
+  });
 }
 
 // =========================

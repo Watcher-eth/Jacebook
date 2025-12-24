@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { searchCelebs, getAvatarUrlForSlug } from "@/lib/people";
+import { getAvatarPhotoIdMap } from "@/lib/avatars"
+import { photoThumbUrl } from "@/lib/photos-urls"
 
 type PersonSearchRow = { slug: string; name: string; avatarUrl?: string };
 
@@ -13,14 +15,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const hits = await searchCelebs(q, limit);
 
-  // avatars in parallel (small N)
-  const avatarUrls = await Promise.all(hits.map((h) => getAvatarUrlForSlug(h.slug)));
+  const avatarMap = await getAvatarPhotoIdMap(hits.map((h) => h.slug));
 
-  const people: PersonSearchRow[] = hits.map((h, i) => ({
-    slug: h.slug,
-    name: h.name,
-    avatarUrl: avatarUrls[i] ?? undefined,
-  }));
+  const people: PersonSearchRow[] = hits.map((h) => {
+    const pid = avatarMap.get(h.slug);
+    return {
+      slug: h.slug,
+      name: h.name,
+      avatarUrl: pid ? photoThumbUrl(pid, 256) : undefined,
+    };
+  });
 
   return res.status(200).json({ people });
 }

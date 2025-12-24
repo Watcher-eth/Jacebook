@@ -28,7 +28,7 @@ export function FriendsSection(props: {
 }) {
   const { friends, loading, name, onShowAll } = props;
 
-  const MAX = 9;
+  const MAX = 12;
   const visible = (friends ?? []).slice(0, MAX);
   const count = friends?.length ?? 0;
   const hasMore = count > MAX;
@@ -55,7 +55,7 @@ export function FriendsSection(props: {
       </div>
 
       {loading ? (
-        <div className="space-y-2 mt-5">
+        <div className="space-y-2 mt-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2">
               <div className="h-9 w-9 rounded-sm bg-muted" />
@@ -69,7 +69,7 @@ export function FriendsSection(props: {
       ) : count === 0 ? (
         <div className="text-sm text-muted-foreground mt-5">No friends yet.</div>
       ) : (
-        <div className="grid grid-cols-3 gap-2 mt-5">
+        <div className="grid grid-cols-3 gap-2 mt-4">
           {visible.map((f) => {
             const src = f.avatarUrl || "../placeholderPfp.jpg"
             return (

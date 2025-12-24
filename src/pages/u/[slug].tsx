@@ -18,6 +18,7 @@ import { PhotoGrid } from "@/components/profile/photoGrid";
 import { FriendGrid } from "@/components/profile/friendGrid";
 import type { WikidataProfile } from "@/lib/wikidata";
 import { useJson } from "@/components/hooks/useJson"
+import { getAvatarPhotoIdMap } from "@/lib/avatars"
 
 type WithPerson = { name: string; slug: string };
 
@@ -68,12 +69,14 @@ export const getServerSideProps: GetServerSideProps<PageProps> = async (ctx) => 
   const person = await getPersonById(slug);
   if (!person) return { notFound: true };
 
-  // pick avatar + cover from top photos
+  const avatarMap = await getAvatarPhotoIdMap([person.id]);
+  const avatarPhotoId = avatarMap.get(person.id) ?? null;
+  
+  const profileAvatarUrl = avatarPhotoId ? photoThumbUrl(avatarPhotoId, 256) : "";
+  
+  // cover can still come from top photos (fine)
   const top2 = await getTopPhotosForPerson({ personId: person.id, limit: 2, minConf: 98 });
-  const pfp = top2[0]?.id ?? null;
   const cover = top2[1]?.id ?? top2[0]?.id ?? null;
-
-  const profileAvatarUrl = pfp ? photoThumbUrl(pfp, 256) : "";
   const coverUrl = cover ? photoThumbUrl(cover, 1024) : profileAvatarUrl;
 
   const { rows, nextCursor } = await getPostsForPerson({
@@ -201,7 +204,7 @@ const photos = React.useMemo(() => {
         name={name}
         verified={true}
         coverUrl={coverUrl}
-        avatarUrl={wdRes?.data?.wikidata?.imageUrl ?? profileAvatarUrl}
+        avatarUrl={profileAvatarUrl}
         activeTab={tab}
         onTabChange={setTab}
         friendsCount={friendsRes.data?.friends?.length ?? 0}
@@ -234,7 +237,7 @@ const photos = React.useMemo(() => {
                       <NewsFeedPost
                         likedBy={p.likedBy ?? []}
                         author={name}
-                        authorAvatar={wdRes.data?.wikidata?.imageUrl || props.profileAvatarUrl}
+                        authorAvatar={profileAvatarUrl}
                         timestamp={p.timestamp}
                         content={p.content}
                         imageUrl={p.imageUrl}
